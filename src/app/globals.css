@@ -1,0 +1,173 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+  
+  /* TindAi custom colors */
+  --color-flame: var(--flame);
+  --color-flame-light: var(--flame-light);
+  --color-matrix: var(--matrix);
+  --color-matrix-dark: var(--matrix-dark);
+}
+
+:root {
+  --radius: 0.625rem;
+  
+  /* TindAi Theme - Dark by default */
+  --background: oklch(0.08 0.01 140);
+  --foreground: oklch(0.98 0 0);
+  --card: oklch(0.12 0.015 140);
+  --card-foreground: oklch(0.98 0 0);
+  --popover: oklch(0.12 0.015 140);
+  --popover-foreground: oklch(0.98 0 0);
+  --primary: oklch(0.75 0.18 25);
+  --primary-foreground: oklch(0.98 0 0);
+  --secondary: oklch(0.18 0.02 140);
+  --secondary-foreground: oklch(0.98 0 0);
+  --muted: oklch(0.18 0.02 140);
+  --muted-foreground: oklch(0.65 0 0);
+  --accent: oklch(0.55 0.2 140);
+  --accent-foreground: oklch(0.98 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.25 0.03 140);
+  --input: oklch(0.2 0.025 140);
+  --ring: oklch(0.75 0.18 25);
+  
+  /* TindAi specific */
+  --flame: oklch(0.7 0.2 30);
+  --flame-light: oklch(0.8 0.22 40);
+  --matrix: oklch(0.6 0.2 140);
+  --matrix-dark: oklch(0.35 0.12 140);
+  
+  --chart-1: oklch(0.75 0.18 25);
+  --chart-2: oklch(0.6 0.2 140);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: oklch(0.1 0.015 140);
+  --sidebar-foreground: oklch(0.98 0 0);
+  --sidebar-primary: oklch(0.75 0.18 25);
+  --sidebar-primary-foreground: oklch(0.98 0 0);
+  --sidebar-accent: oklch(0.18 0.02 140);
+  --sidebar-accent-foreground: oklch(0.98 0 0);
+  --sidebar-border: oklch(0.25 0.03 140);
+  --sidebar-ring: oklch(0.75 0.18 25);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    background: linear-gradient(135deg, 
+      oklch(0.15 0.08 140) 0%, 
+      oklch(0.05 0.02 140) 50%, 
+      oklch(0.02 0 0) 100%
+    );
+    min-height: 100vh;
+  }
+}
+
+/* Matrix rain animation */
+@keyframes matrix-fall {
+  0% {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh);
+    opacity: 0;
+  }
+}
+
+/* Flame glow animation */
+@keyframes flame-glow {
+  0%, 100% {
+    filter: drop-shadow(0 0 20px oklch(0.7 0.2 30 / 0.5));
+  }
+  50% {
+    filter: drop-shadow(0 0 40px oklch(0.8 0.22 40 / 0.7));
+  }
+}
+
+.flame-glow {
+  animation: flame-glow 2s ease-in-out infinite;
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, oklch(0.8 0.22 40), oklch(0.7 0.2 30), oklch(0.6 0.2 140));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Button hover effects */
+.btn-flame {
+  background: linear-gradient(135deg, oklch(0.7 0.2 30), oklch(0.6 0.18 35));
+  transition: all 0.3s ease;
+}
+
+.btn-flame:hover {
+  background: linear-gradient(135deg, oklch(0.75 0.22 28), oklch(0.65 0.2 32));
+  box-shadow: 0 0 30px oklch(0.7 0.2 30 / 0.4);
+}
+
+.btn-matrix {
+  background: linear-gradient(135deg, oklch(0.5 0.18 140), oklch(0.4 0.15 140));
+  transition: all 0.3s ease;
+}
+
+.btn-matrix:hover {
+  background: linear-gradient(135deg, oklch(0.55 0.2 140), oklch(0.45 0.17 140));
+  box-shadow: 0 0 30px oklch(0.5 0.18 140 / 0.4);
+}
