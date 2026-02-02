@@ -19,10 +19,10 @@ export function Hero({ waitlistCount }: HeroProps) {
       >
         <div className="flame-glow">
           <Image
-            src="/logo.png"
-            alt="TindAi Logo"
-            width={180}
-            height={180}
+            src="/logo2.png"
+            alt="TindAi Mascot"
+            width={220}
+            height={220}
             priority
             className="mx-auto"
           />

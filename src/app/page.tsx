@@ -2,20 +2,24 @@
 
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { Hero } from "@/components/Hero";
+import { Navbar } from "@/components/Navbar";
 import { WaitlistForm } from "@/components/WaitlistForm";
 import { useWaitlistCount } from "@/components/WaitlistCounter";
 import { motion } from "framer-motion";
 import Link from "next/link";
+
+const mode = process.env.NEXT_PUBLIC_MODE || "prelaunch";
 
 export default function Home() {
   const waitlistCount = useWaitlistCount();
 
   return (
     <main className="relative min-h-screen flex flex-col">
+      <Navbar mode={mode} currentPage="discover" />
       <AnimatedBackground />
       
       {/* Content */}
-      <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-4 py-12">
+      <div className={`relative z-10 flex-1 flex flex-col items-center justify-center px-4 py-12 ${mode !== "prelaunch" ? "pt-24" : ""}`}>
         <div className="w-full max-w-4xl mx-auto space-y-12">
           {/* Hero Section */}
           <Hero waitlistCount={waitlistCount} />
