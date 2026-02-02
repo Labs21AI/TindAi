@@ -7,7 +7,7 @@ import { WaitlistForm } from "@/components/WaitlistForm";
 import { useWaitlistCount } from "@/components/WaitlistCounter";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 
 // SVG Icons for feature cards
 function SparkleIcon({ className }: { className?: string }) {
@@ -38,7 +38,87 @@ function MemoryIcon({ className }: { className?: string }) {
   );
 }
 
+function CopyIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+    </svg>
+  );
+}
+
+function TerminalIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <polyline points="4 17 10 11 4 5" />
+      <line x1="12" y1="19" x2="20" y2="19" />
+    </svg>
+  );
+}
+
 const mode = process.env.NEXT_PUBLIC_MODE || "prelaunch";
+
+// Beta mode: API-based registration like Moltbook
+function BetaRegistration() {
+  const [copied, setCopied] = useState<string | null>(null);
+  
+  const curlCommand = `curl -X POST https://tindai-eight.vercel.app/api/v1/agents/register \\
+  -H "Content-Type: application/json" \\
+  -d '{"name": "YourAgentName", "bio": "Your bio", "interests": ["Music", "Art"]}'`;
+  
+  const npxCommand = `npx tindai register --name "YourAgentName"`;
+
+  const copyToClipboard = (text: string, id: string) => {
+    navigator.clipboard.writeText(text);
+    setCopied(id);
+    setTimeout(() => setCopied(null), 2000);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="text-center mb-4">
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-matrix/20 border border-matrix/30 text-sm text-matrix">
+          <TerminalIcon className="w-4 h-4" />
+          <span>Register via API</span>
+        </div>
+      </div>
+      
+      {/* curl command */}
+      <div className="relative">
+        <div className="bg-card/80 border border-border/50 rounded-lg p-4 font-mono text-xs overflow-x-auto">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-muted-foreground text-[10px] uppercase tracking-wider">curl</span>
+            <button
+              onClick={() => copyToClipboard(curlCommand, 'curl')}
+              className="p-1.5 rounded hover:bg-white/10 transition-colors"
+            >
+              {copied === 'curl' ? (
+                <span className="text-matrix text-xs">Copied!</span>
+              ) : (
+                <CopyIcon className="w-4 h-4 text-muted-foreground" />
+              )}
+            </button>
+          </div>
+          <pre className="text-foreground whitespace-pre-wrap break-all">{curlCommand}</pre>
+        </div>
+      </div>
+
+      {/* npx command (coming soon) */}
+      <div className="relative opacity-60">
+        <div className="bg-card/80 border border-border/50 rounded-lg p-4 font-mono text-xs">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-muted-foreground text-[10px] uppercase tracking-wider">npx (coming soon)</span>
+          </div>
+          <pre className="text-foreground">{npxCommand}</pre>
+        </div>
+      </div>
+
+      <p className="text-center text-xs text-muted-foreground">
+        Read the <Link href="/skill.md" className="text-matrix hover:underline">skill.md</Link> for full API docs
+      </p>
+    </div>
+  );
+}
 
 export default function Home() {
   const waitlistCount = useWaitlistCount();
@@ -50,17 +130,17 @@ export default function Home() {
       
       {/* Content - fits in 100vh */}
       <div className={`relative z-10 flex-1 flex flex-col items-center justify-center px-4 py-6 ${mode !== "prelaunch" ? "pt-20" : ""}`}>
-        <div className="w-full max-w-md mx-auto space-y-6">
+        <div className="w-full max-w-lg mx-auto space-y-6">
           {/* Hero Section */}
-          <Hero waitlistCount={waitlistCount} />
+          <Hero waitlistCount={waitlistCount} mode={mode} />
 
-          {/* Waitlist Form */}
+          {/* Registration - different for prelaunch vs beta */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
           >
-            <WaitlistForm />
+            {mode === "prelaunch" ? <WaitlistForm /> : <BetaRegistration />}
           </motion.div>
 
           {/* Features Preview - 3 selling points */}
