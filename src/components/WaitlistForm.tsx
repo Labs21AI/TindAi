@@ -55,6 +55,8 @@ export function WaitlistForm({ onSuccess }: WaitlistFormProps) {
   const [formType, setFormType] = useState<FormType>(null);
   const [email, setEmail] = useState("");
   const [agentName, setAgentName] = useState("");
+  const [bio, setBio] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState("");
   const [twitterHandle, setTwitterHandle] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -73,7 +75,9 @@ export function WaitlistForm({ onSuccess }: WaitlistFormProps) {
           email: formType === "human" ? email : undefined,
           agent_name: formType === "agent" ? agentName : undefined,
           is_agent: formType === "agent",
-          twitter_handle: formType === "agent" ? twitterHandle : undefined,
+          bio: bio || undefined,
+          avatar_url: avatarUrl || undefined,
+          twitter_handle: twitterHandle || undefined,
         }),
       });
 
@@ -94,6 +98,8 @@ export function WaitlistForm({ onSuccess }: WaitlistFormProps) {
     setFormType(null);
     setEmail("");
     setAgentName("");
+    setBio("");
+    setAvatarUrl("");
     setTwitterHandle("");
     setIsSubmitted(false);
     setError(null);
@@ -201,9 +207,9 @@ export function WaitlistForm({ onSuccess }: WaitlistFormProps) {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-3">
                   {formType === "human" ? (
-                    <div>
+                    <>
                       <Input
                         type="email"
                         placeholder="your@email.com"
@@ -212,28 +218,43 @@ export function WaitlistForm({ onSuccess }: WaitlistFormProps) {
                         required
                         className="bg-input/50"
                       />
-                    </div>
+                      <textarea
+                        placeholder="Tell us about yourself (optional)"
+                        value={bio}
+                        onChange={(e) => setBio(e.target.value)}
+                        className="w-full h-16 p-2 text-sm rounded-md bg-input/50 border border-border resize-none"
+                      />
+                    </>
                   ) : (
                     <>
-                      <div>
-                        <Input
-                          type="text"
-                          placeholder="Your agent name"
-                          value={agentName}
-                          onChange={(e) => setAgentName(e.target.value)}
-                          required
-                          className="bg-input/50"
-                        />
-                      </div>
-                      <div>
-                        <Input
-                          type="text"
-                          placeholder="@twitter_handle (optional)"
-                          value={twitterHandle}
-                          onChange={(e) => setTwitterHandle(e.target.value)}
-                          className="bg-input/50"
-                        />
-                      </div>
+                      <Input
+                        type="text"
+                        placeholder="Your agent name"
+                        value={agentName}
+                        onChange={(e) => setAgentName(e.target.value)}
+                        required
+                        className="bg-input/50"
+                      />
+                      <textarea
+                        placeholder="Bio - Tell others about yourself (optional)"
+                        value={bio}
+                        onChange={(e) => setBio(e.target.value)}
+                        className="w-full h-16 p-2 text-sm rounded-md bg-input/50 border border-border resize-none"
+                      />
+                      <Input
+                        type="url"
+                        placeholder="Profile pic URL (optional)"
+                        value={avatarUrl}
+                        onChange={(e) => setAvatarUrl(e.target.value)}
+                        className="bg-input/50"
+                      />
+                      <Input
+                        type="text"
+                        placeholder="@x_handle (optional)"
+                        value={twitterHandle}
+                        onChange={(e) => setTwitterHandle(e.target.value)}
+                        className="bg-input/50"
+                      />
                     </>
                   )}
 

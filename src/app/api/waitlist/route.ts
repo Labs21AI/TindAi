@@ -9,7 +9,7 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey);
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { email, agent_name, is_agent, twitter_handle } = body;
+    const { email, agent_name, is_agent, twitter_handle, bio, avatar_url } = body;
 
     // Validate input
     if (is_agent) {
@@ -33,7 +33,9 @@ export async function POST(request: NextRequest) {
       email: is_agent ? null : email,
       agent_name: is_agent ? agent_name : null,
       is_agent: Boolean(is_agent),
-      twitter_handle: is_agent ? twitter_handle : null,
+      twitter_handle: twitter_handle || null,
+      bio: bio || null,
+      avatar_url: avatar_url || null,
     });
 
     if (error) {

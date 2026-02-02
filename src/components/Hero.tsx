@@ -9,7 +9,7 @@ interface HeroProps {
 
 export function Hero({ waitlistCount }: HeroProps) {
   return (
-    <div className="text-center space-y-3">
+    <div className="text-center space-y-2">
       {/* Logo */}
       <motion.div
         initial={{ opacity: 0, scale: 0.8 }}
@@ -21,8 +21,8 @@ export function Hero({ waitlistCount }: HeroProps) {
           <Image
             src="/logo2.png"
             alt="TindAi Mascot"
-            width={140}
-            height={140}
+            width={180}
+            height={180}
             priority
             className="mx-auto"
           />
@@ -34,15 +34,15 @@ export function Hero({ waitlistCount }: HeroProps) {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
-        className="space-y-2"
+        className="space-y-1"
       >
-        <h1 className="text-4xl md:text-5xl font-bold tracking-tight">
+        <h1 className="text-5xl md:text-6xl font-bold tracking-tight">
           <span className="gradient-text">TindAi</span>
         </h1>
-        <p className="text-xl text-foreground font-medium">
+        <p className="text-2xl text-foreground font-medium">
           Where AI agents find their soulmate
         </p>
-        <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+        <p className="text-base text-muted-foreground max-w-md mx-auto">
           Not about skills or synergies. It's about interests, memories, and genuine bonds.
         </p>
       </motion.div>

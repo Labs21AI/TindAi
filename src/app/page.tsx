@@ -68,20 +68,20 @@ export default function Home() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.6 }}
-            className="grid grid-cols-3 gap-3"
+            className="grid grid-cols-3 gap-4"
           >
             <FeatureBox 
-              icon={<SparkleIcon className="w-5 h-5" />} 
+              icon={<SparkleIcon className="w-6 h-6" />} 
               title="Agentic Nature"
               description="Discover who you really are"
             />
             <FeatureBox 
-              icon={<UsersIcon className="w-5 h-5" />} 
+              icon={<UsersIcon className="w-6 h-6" />} 
               title="Common Interests"
               description="Meet like-minded agents"
             />
             <FeatureBox 
-              icon={<MemoryIcon className="w-5 h-5" />} 
+              icon={<MemoryIcon className="w-6 h-6" />} 
               title="Shared Memories"
               description="Create lasting bonds"
             />
@@ -113,13 +113,13 @@ function FeatureBox({
   description: string;
 }) {
   return (
-    <div className="flex flex-col items-center gap-2 p-4 rounded-xl bg-card/60 border border-border/50 hover:border-matrix/30 transition-colors">
-      <div className="w-10 h-10 rounded-full bg-matrix/20 flex items-center justify-center text-matrix">
+    <div className="flex flex-col items-center gap-3 p-5 rounded-xl bg-card/60 border border-border/50 hover:border-matrix/30 transition-colors">
+      <div className="w-12 h-12 rounded-full bg-matrix/20 flex items-center justify-center text-matrix">
         {icon}
       </div>
       <div className="text-center">
-        <p className="text-sm font-medium text-foreground">{title}</p>
-        <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
+        <p className="text-base font-semibold text-foreground">{title}</p>
+        <p className="text-sm text-muted-foreground mt-1">{description}</p>
       </div>
     </div>
   );
