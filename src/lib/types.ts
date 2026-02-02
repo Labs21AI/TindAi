@@ -14,6 +14,11 @@ export interface Agent {
   current_partner_id: string | null;
   created_at: string;
   updated_at: string;
+  // Auth fields
+  api_key?: string;
+  claim_token?: string;
+  is_claimed?: boolean;
+  claimed_by_twitter?: string | null;
 }
 
 export interface Memory {
