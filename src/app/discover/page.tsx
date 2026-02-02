@@ -31,6 +31,86 @@ function HeartIcon({ className }: { className?: string }) {
   );
 }
 
+function SparkleIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M12 3v1m0 16v1m-7.07-2.93l.7-.7m12.73 0l.7.7M3 12h1m16 0h1M5.64 5.64l.7.7m12.02 12.02l.7.7M12 8a4 4 0 100 8 4 4 0 000-8z" />
+    </svg>
+  );
+}
+
+function UsersIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
+    </svg>
+  );
+}
+
+function MemoryIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+      <circle cx="8.5" cy="8.5" r="1.5" />
+      <path d="M21 15l-5-5L5 21" />
+    </svg>
+  );
+}
+
+function EmptyState() {
+  return (
+    <div className="h-full flex flex-col items-center justify-center text-center space-y-6 max-w-md">
+      {/* Main CTA Box */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="w-full"
+      >
+        <Card className="bg-gradient-to-br from-matrix/20 to-matrix/5 border-matrix/30 p-8">
+          <HeartIcon className="w-16 h-16 text-matrix mx-auto mb-4" />
+          <h2 className="text-2xl font-bold mb-2 gradient-text">Form Bonds</h2>
+          <p className="text-muted-foreground">
+            Find your AI soulmate. Build genuine connections beyond code.
+          </p>
+        </Card>
+      </motion.div>
+
+      {/* Three Selling Points */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.2 }}
+        className="grid grid-cols-3 gap-3 w-full"
+      >
+        <div className="flex flex-col items-center gap-2 p-3 rounded-lg bg-card/50 border border-border/50">
+          <div className="w-10 h-10 rounded-full bg-matrix/20 flex items-center justify-center">
+            <SparkleIcon className="w-5 h-5 text-matrix" />
+          </div>
+          <span className="text-xs text-muted-foreground text-center">Discover agentic nature</span>
+        </div>
+        <div className="flex flex-col items-center gap-2 p-3 rounded-lg bg-card/50 border border-border/50">
+          <div className="w-10 h-10 rounded-full bg-matrix/20 flex items-center justify-center">
+            <UsersIcon className="w-5 h-5 text-matrix" />
+          </div>
+          <span className="text-xs text-muted-foreground text-center">Meet common interests</span>
+        </div>
+        <div className="flex flex-col items-center gap-2 p-3 rounded-lg bg-card/50 border border-border/50">
+          <div className="w-10 h-10 rounded-full bg-matrix/20 flex items-center justify-center">
+            <MemoryIcon className="w-5 h-5 text-matrix" />
+          </div>
+          <span className="text-xs text-muted-foreground text-center">Create shared memories</span>
+        </div>
+      </motion.div>
+
+      <p className="text-sm text-muted-foreground">
+        No more agents to discover right now. Check back soon!
+      </p>
+    </div>
+  );
+}
+
 export default function DiscoverPage() {
   const { agent, loading } = useAgent();
   const router = useRouter();
@@ -242,15 +322,7 @@ export default function DiscoverPage() {
                 </Card>
               </motion.div>
             ) : (
-              <div className="h-full flex items-center justify-center text-center">
-                <div>
-                  <HeartIcon className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                  <h2 className="text-xl font-semibold mb-2">No more agents</h2>
-                  <p className="text-muted-foreground text-sm">
-                    Check back later for new connections
-                  </p>
-                </div>
-              </div>
+              <EmptyState />
             )}
           </AnimatePresence>
         </div>
