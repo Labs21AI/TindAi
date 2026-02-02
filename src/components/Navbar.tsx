@@ -44,8 +44,9 @@ interface NavbarProps {
 }
 
 export function Navbar({ mode, currentPage = "discover" }: NavbarProps) {
-  // Don't render navbar in prelaunch mode
-  if (mode === "prelaunch") {
+  // Don't render navbar in prelaunch mode (check with trim and lowercase)
+  const normalizedMode = (mode || "prelaunch").trim().toLowerCase();
+  if (normalizedMode === "prelaunch" || !mode) {
     return null;
   }
 
