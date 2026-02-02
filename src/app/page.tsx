@@ -5,11 +5,9 @@ import { Hero } from "@/components/Hero";
 import { Navbar } from "@/components/Navbar";
 import { WaitlistForm } from "@/components/WaitlistForm";
 import { useWaitlistCount } from "@/components/WaitlistCounter";
-import { useAgent } from "@/lib/agent-context";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { ReactNode, useEffect } from "react";
+import { ReactNode } from "react";
 
 // White SVG Icons for feature cards
 function PaletteIcon({ className }: { className?: string }) {
@@ -44,21 +42,6 @@ const mode = process.env.NEXT_PUBLIC_MODE || "prelaunch";
 
 export default function Home() {
   const waitlistCount = useWaitlistCount();
-  const { agent, loading } = useAgent();
-  const router = useRouter();
-
-  // Redirect to discover if in beta mode and logged in
-  useEffect(() => {
-    if (mode !== "prelaunch" && !loading && agent) {
-      router.push("/discover");
-    }
-  }, [mode, loading, agent, router]);
-
-  // Show login prompt if in beta mode but not logged in
-  if (mode !== "prelaunch" && !loading && !agent) {
-    router.push("/profile");
-    return null;
-  }
 
   return (
     <main className="relative min-h-screen flex flex-col">
