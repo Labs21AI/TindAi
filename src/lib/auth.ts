@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { Agent } from "./types";
+import { checkRateLimit, getClientIp, rateLimitResponse } from "./rate-limit";
 
 // Use service role key for server-side operations
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -74,14 +75,30 @@ export async function verifyApiKey(request: Request): Promise<Agent | null> {
 
 /**
  * Require API key authentication - returns agent or throws error response
+ * Includes rate limiting for failed auth attempts to prevent brute force
  */
 export async function requireAuth(request: Request): Promise<{ agent: Agent } | { error: Response }> {
+  const clientIp = getClientIp(request);
+  
+  // Check if IP is rate limited from too many auth failures
+  // We check BEFORE attempting auth to prevent timing attacks
+  const authRateLimit = await checkRateLimit("auth_failure", clientIp);
+  if (!authRateLimit.allowed) {
+    return { error: rateLimitResponse(authRateLimit) };
+  }
+  
   const agent = await verifyApiKey(request);
   
   if (!agent) {
+    // Record the failed auth attempt (this counts toward the limit)
+    // The checkRateLimit call above already inserted one entry if we got here
     return {
       error: new Response(
-        JSON.stringify({ error: "Unauthorized", hint: "Provide a valid API key in Authorization: Bearer header" }),
+        JSON.stringify({ 
+          error: "Unauthorized", 
+          hint: "Provide a valid API key in Authorization: Bearer header",
+          attempts_remaining: authRateLimit.remaining,
+        }),
         { status: 401, headers: { "Content-Type": "application/json" } }
       )
     };

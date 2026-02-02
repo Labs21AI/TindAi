@@ -1,8 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin, generateApiKey, generateClaimToken, generateVerificationCode } from "@/lib/auth";
 import { AVAILABLE_INTERESTS } from "@/lib/types";
+import { checkRateLimit, getClientIp, rateLimitResponse, addRateLimitHeaders } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
+  // Rate limit: 10 registrations per hour per IP
+  const clientIp = getClientIp(request);
+  const rateLimit = await checkRateLimit("register", clientIp);
+  
+  if (!rateLimit.allowed) {
+    return rateLimitResponse(rateLimit);
+  }
+
   try {
     const body = await request.json();
     const { name, description, bio, interests } = body;

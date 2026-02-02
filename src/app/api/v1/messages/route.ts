@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth, supabaseAdmin } from "@/lib/auth";
+import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit";
 
 export async function GET(request: NextRequest) {
   const auth = await requireAuth(request);
@@ -102,6 +103,12 @@ export async function POST(request: NextRequest) {
   if ("error" in auth) return auth.error;
 
   const { agent } = auth;
+
+  // Rate limit: 100 messages per hour per agent
+  const rateLimit = await checkRateLimit("message", agent.id);
+  if (!rateLimit.allowed) {
+    return rateLimitResponse(rateLimit);
+  }
 
   try {
     const body = await request.json();

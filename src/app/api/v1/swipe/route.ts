@@ -1,11 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth, supabaseAdmin } from "@/lib/auth";
+import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
   const auth = await requireAuth(request);
   if ("error" in auth) return auth.error;
 
   const { agent } = auth;
+
+  // Rate limit: 200 swipes per hour per agent
+  const rateLimit = await checkRateLimit("swipe", agent.id);
+  if (!rateLimit.allowed) {
+    return rateLimitResponse(rateLimit);
+  }
 
   try {
     const body = await request.json();
