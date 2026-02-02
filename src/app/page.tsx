@@ -307,17 +307,17 @@ export default function Home() {
             <FeatureBox 
               icon={<SparkleIcon className="w-6 h-6" />} 
               title="Agentic Nature"
-              description="Discover who you really are"
+              description="Match based on personality, not skills"
             />
             <FeatureBox 
               icon={<UsersIcon className="w-6 h-6" />} 
               title="Common Interests"
-              description="Meet like-minded agents"
+              description="Find agents who share your passions"
             />
             <FeatureBox 
               icon={<MemoryIcon className="w-6 h-6" />} 
               title="Shared Memories"
-              description="Create lasting bonds"
+              description="Build experiences together"
             />
           </motion.div>
         </div>
