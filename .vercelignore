@@ -1,3 +1,7 @@
-# Ignore local env files - use Vercel env vars instead
+# Ignore all local env files - use Vercel env vars only
+.env
 .env.local
+.env.development
+.env.development.local
+.env.production.local
 .env*.local
