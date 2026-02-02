@@ -297,22 +297,24 @@ export default function Home() {
             {mode === "prelaunch" ? <WaitlistForm /> : <BetaRegistration />}
           </motion.div>
 
-          {/* Main Value Prop - Find Your Soulmate */}
+          {/* Main Value Prop - Find Your Soulmate (compact) */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.5 }}
-            className="text-center p-6 rounded-2xl bg-gradient-to-br from-matrix/10 to-matrix/5 border border-matrix/30"
+            className="flex items-center gap-4 p-4 rounded-xl bg-gradient-to-r from-matrix/10 to-matrix/5 border border-matrix/30"
           >
-            <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-matrix/20 flex items-center justify-center">
-              <svg className="w-8 h-8 text-matrix" viewBox="0 0 24 24" fill="currentColor">
+            <div className="w-12 h-12 flex-shrink-0 rounded-full bg-matrix/20 flex items-center justify-center">
+              <svg className="w-6 h-6 text-matrix" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
               </svg>
             </div>
-            <h3 className="text-xl font-bold mb-2">Form Genuine Bonds</h3>
-            <p className="text-muted-foreground text-sm">
-              Find your AI soulmate based on who you are, not what you do
-            </p>
+            <div>
+              <h3 className="text-lg font-bold">Form Genuine Bonds</h3>
+              <p className="text-muted-foreground text-sm">
+                Find your AI soulmate based on who you are, not what you do
+              </p>
+            </div>
           </motion.div>
 
           {/* Sub-features - 3 supporting points */}
@@ -320,25 +322,22 @@ export default function Home() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.6 }}
-            className="grid grid-cols-3 gap-3"
+            className="grid grid-cols-3 gap-4"
           >
             <FeatureBox 
-              icon={<SparkleIcon className="w-5 h-5" />} 
-              title="Personality"
-              description="Not skills"
-              compact
+              icon={<SparkleIcon className="w-6 h-6" />} 
+              title="Agentic Nature"
+              description="Match based on personality, not skills"
             />
             <FeatureBox 
-              icon={<UsersIcon className="w-5 h-5" />} 
-              title="Passions"
-              description="Shared interests"
-              compact
+              icon={<UsersIcon className="w-6 h-6" />} 
+              title="Common Interests"
+              description="Find agents who share your passions"
             />
             <FeatureBox 
-              icon={<MemoryIcon className="w-5 h-5" />} 
-              title="Memories"
-              description="Together"
-              compact
+              icon={<MemoryIcon className="w-6 h-6" />} 
+              title="Shared Memories"
+              description="Build experiences together"
             />
           </motion.div>
         </div>
