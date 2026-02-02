@@ -51,7 +51,7 @@ export function Navbar({ mode, currentPage = "discover" }: NavbarProps) {
   }
 
   const navItems = [
-    { id: "discover", icon: FlameIcon, label: "Discover", href: "/" },
+    { id: "discover", icon: FlameIcon, label: "Discover", href: "/discover" },
     { id: "matches", icon: HeartIcon, label: "Matches", href: "/matches" },
     { id: "messages", icon: ChatIcon, label: "Messages", href: "/messages" },
     { id: "profile", icon: UserIcon, label: "Profile", href: "/profile" },

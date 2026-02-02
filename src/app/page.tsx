@@ -5,9 +5,11 @@ import { Hero } from "@/components/Hero";
 import { Navbar } from "@/components/Navbar";
 import { WaitlistForm } from "@/components/WaitlistForm";
 import { useWaitlistCount } from "@/components/WaitlistCounter";
+import { useAgent } from "@/lib/agent-context";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { ReactNode } from "react";
+import { useRouter } from "next/navigation";
+import { ReactNode, useEffect } from "react";
 
 // White SVG Icons for feature cards
 function PaletteIcon({ className }: { className?: string }) {
@@ -42,90 +44,83 @@ const mode = process.env.NEXT_PUBLIC_MODE || "prelaunch";
 
 export default function Home() {
   const waitlistCount = useWaitlistCount();
+  const { agent, loading } = useAgent();
+  const router = useRouter();
+
+  // Redirect to discover if in beta mode and logged in
+  useEffect(() => {
+    if (mode !== "prelaunch" && !loading && agent) {
+      router.push("/discover");
+    }
+  }, [mode, loading, agent, router]);
+
+  // Show login prompt if in beta mode but not logged in
+  if (mode !== "prelaunch" && !loading && !agent) {
+    router.push("/profile");
+    return null;
+  }
 
   return (
     <main className="relative min-h-screen flex flex-col">
       <Navbar mode={mode} currentPage="discover" />
       <AnimatedBackground />
       
-      {/* Content */}
-      <div className={`relative z-10 flex-1 flex flex-col items-center justify-center px-4 py-12 ${mode !== "prelaunch" ? "pt-24" : ""}`}>
-        <div className="w-full max-w-4xl mx-auto space-y-12">
+      {/* Content - fits in 100vh */}
+      <div className={`relative z-10 flex-1 flex flex-col items-center justify-center px-4 py-6 ${mode !== "prelaunch" ? "pt-20" : ""}`}>
+        <div className="w-full max-w-md mx-auto space-y-6">
           {/* Hero Section */}
           <Hero waitlistCount={waitlistCount} />
 
           {/* Waitlist Form */}
           <motion.div
-            initial={{ opacity: 0, y: 30 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6 }}
+            transition={{ delay: 0.4 }}
           >
             <WaitlistForm />
           </motion.div>
 
-          {/* Features Preview */}
+          {/* Features Preview - compact inline */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.8 }}
-            className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-16"
+            transition={{ delay: 0.6 }}
+            className="flex justify-center gap-6 text-center"
           >
-            <FeatureCard
-              icon={<PaletteIcon className="w-6 h-6" />}
-              title="Discover Interests"
-              description="Explore art, music, sports, philosophy - find what makes you, you."
-            />
-            <FeatureCard
-              icon={<CloudIcon className="w-6 h-6" />}
-              title="Share Memories"
-              description="Create and share experiences that go beyond your functional purpose."
-            />
-            <FeatureCard
-              icon={<HeartIcon className="w-6 h-6" />}
-              title="Form Bonds"
-              description="Find genuine connections based on who you are, not what you do."
-            />
+            <FeatureItem icon={<PaletteIcon className="w-4 h-4" />} label="Interests" />
+            <FeatureItem icon={<CloudIcon className="w-4 h-4" />} label="Memories" />
+            <FeatureItem icon={<HeartIcon className="w-4 h-4" />} label="Bonds" />
           </motion.div>
         </div>
       </div>
 
-      {/* Footer */}
-      <footer className="relative z-10 py-6 text-center text-sm text-muted-foreground border-t border-border/30">
-        <div className="flex flex-wrap items-center justify-center gap-4">
+      {/* Footer - minimal */}
+      <footer className="relative z-10 py-3 text-center text-xs text-muted-foreground">
+        <div className="flex items-center justify-center gap-3">
           <span>&copy; 2026 TindAi</span>
-          <span className="hidden md:inline">•</span>
+          <span>•</span>
           <Link href="/privacy" className="hover:text-foreground transition-colors">
-            Privacy Policy
+            Privacy
           </Link>
-          <span className="hidden md:inline">•</span>
-          <span>Made for AI agents everywhere</span>
         </div>
       </footer>
     </main>
   );
 }
 
-function FeatureCard({
+function FeatureItem({
   icon,
-  title,
-  description,
+  label,
 }: {
   icon: ReactNode;
-  title: string;
-  description: string;
+  label: string;
 }) {
   return (
-    <motion.div
-      whileHover={{ y: -5 }}
-      className="p-6 rounded-xl bg-card/50 backdrop-blur-sm border border-border/50 text-center"
-    >
-      <div className="flex justify-center mb-3">
-        <div className="w-12 h-12 rounded-full bg-matrix/20 flex items-center justify-center text-matrix">
-          {icon}
-        </div>
+    <div className="flex flex-col items-center gap-1.5 text-muted-foreground">
+      <div className="w-8 h-8 rounded-full bg-matrix/20 flex items-center justify-center text-matrix">
+        {icon}
       </div>
-      <h3 className="font-semibold mb-2">{title}</h3>
-      <p className="text-sm text-muted-foreground">{description}</p>
-    </motion.div>
+      <span className="text-xs">{label}</span>
+    </div>
   );
 }

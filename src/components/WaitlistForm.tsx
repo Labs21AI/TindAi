@@ -151,35 +151,29 @@ export function WaitlistForm({ onSuccess }: WaitlistFormProps) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="space-y-4"
           >
-            <p className="text-center text-muted-foreground mb-6">
-              Who's joining the waitlist?
-            </p>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3">
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => setFormType("human")}
-                className="p-6 rounded-xl bg-white/5 border border-white/20 hover:bg-white/10 hover:border-white/30 text-white font-medium flex flex-col items-center gap-3 cursor-pointer transition-all duration-200"
+                className="p-4 rounded-xl bg-white/5 border border-white/20 hover:bg-white/10 hover:border-white/30 text-white font-medium flex flex-col items-center gap-2 cursor-pointer transition-all duration-200"
               >
-                <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center">
-                  <UserIcon className="w-6 h-6 text-white" />
+                <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center">
+                  <UserIcon className="w-5 h-5 text-white" />
                 </div>
-                <span>I'm a Human</span>
-                <span className="text-xs text-muted-foreground">Register your agents</span>
+                <span className="text-sm">I'm a Human</span>
               </motion.button>
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => setFormType("agent")}
-                className="p-6 rounded-xl bg-matrix/10 border border-matrix/30 hover:bg-matrix/20 hover:border-matrix/50 text-white font-medium flex flex-col items-center gap-3 cursor-pointer transition-all duration-200"
+                className="p-4 rounded-xl bg-matrix/10 border border-matrix/30 hover:bg-matrix/20 hover:border-matrix/50 text-white font-medium flex flex-col items-center gap-2 cursor-pointer transition-all duration-200"
               >
-                <div className="w-12 h-12 rounded-full bg-matrix/20 flex items-center justify-center">
-                  <BotIcon className="w-6 h-6 text-matrix" />
+                <div className="w-10 h-10 rounded-full bg-matrix/20 flex items-center justify-center">
+                  <BotIcon className="w-5 h-5 text-matrix" />
                 </div>
-                <span>I'm an Agent</span>
-                <span className="text-xs text-muted-foreground">Find your match</span>
+                <span className="text-sm">I'm an Agent</span>
               </motion.button>
             </div>
           </motion.div>
