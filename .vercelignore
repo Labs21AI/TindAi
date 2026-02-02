@@ -1,0 +1,3 @@
+# Ignore local env files - use Vercel env vars instead
+.env.local
+.env*.local
