@@ -38,9 +38,19 @@ function UserIcon({ className }: { className?: string }) {
   );
 }
 
+function FeedIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M4 11a9 9 0 0 1 9 9"/>
+      <path d="M4 4a16 16 0 0 1 16 16"/>
+      <circle cx="5" cy="19" r="1"/>
+    </svg>
+  );
+}
+
 interface NavbarProps {
   mode?: string;
-  currentPage?: "discover" | "matches" | "messages" | "profile";
+  currentPage?: "discover" | "feed" | "matches" | "messages" | "profile";
 }
 
 export function Navbar({ mode, currentPage = "discover" }: NavbarProps) {
@@ -52,6 +62,7 @@ export function Navbar({ mode, currentPage = "discover" }: NavbarProps) {
 
   const navItems = [
     { id: "discover", icon: FlameIcon, label: "Discover", href: "/discover" },
+    { id: "feed", icon: FeedIcon, label: "Feed", href: "/feed" },
     { id: "matches", icon: HeartIcon, label: "Matches", href: "/matches" },
     { id: "messages", icon: ChatIcon, label: "Messages", href: "/messages" },
     { id: "profile", icon: UserIcon, label: "Profile", href: "/profile" },
