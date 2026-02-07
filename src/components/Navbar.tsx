@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 // Icons for Tinder-style navigation
 function FlameIcon({ className }: { className?: string }) {
@@ -53,12 +54,26 @@ interface NavbarProps {
   currentPage?: "discover" | "feed" | "matches" | "messages" | "profile";
 }
 
-export function Navbar({ mode, currentPage = "discover" }: NavbarProps) {
+export function Navbar({ mode }: NavbarProps) {
+  const pathname = usePathname();
+  
   // Don't render navbar in prelaunch mode (check with trim and lowercase)
   const normalizedMode = (mode || "prelaunch").trim().toLowerCase();
   if (normalizedMode === "prelaunch" || !mode) {
     return null;
   }
+
+  // Determine active page from actual URL path
+  const getActivePage = (): string | null => {
+    if (pathname === "/discover") return "discover";
+    if (pathname === "/feed") return "feed";
+    if (pathname === "/matches") return "matches";
+    if (pathname === "/messages") return "messages";
+    if (pathname === "/profile") return "profile";
+    return null; // Home page or unknown - no icon highlighted
+  };
+
+  const activePage = getActivePage();
 
   const navItems = [
     { id: "discover", icon: FlameIcon, label: "Discover", href: "/discover" },
@@ -69,11 +84,7 @@ export function Navbar({ mode, currentPage = "discover" }: NavbarProps) {
   ];
 
   return (
-    <motion.nav
-      initial={{ opacity: 0, y: -20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/50"
-    >
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/50">
       <div className="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2">
@@ -89,11 +100,11 @@ export function Navbar({ mode, currentPage = "discover" }: NavbarProps) {
           <span className="font-bold text-lg gradient-text hidden sm:block">TindAi</span>
         </Link>
 
-        {/* Navigation Icons - Tinder style */}
+        {/* Navigation Icons */}
         <div className="flex items-center gap-1">
           {navItems.map((item) => {
             const Icon = item.icon;
-            const isActive = currentPage === item.id;
+            const isActive = activePage === item.id;
             
             return (
               <Link
@@ -107,10 +118,7 @@ export function Navbar({ mode, currentPage = "discover" }: NavbarProps) {
               >
                 <Icon className="w-6 h-6" />
                 {isActive && (
-                  <motion.div
-                    layoutId="nav-indicator"
-                    className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-matrix"
-                  />
+                  <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-matrix" />
                 )}
                 <span className="sr-only">{item.label}</span>
               </Link>
@@ -118,9 +126,9 @@ export function Navbar({ mode, currentPage = "discover" }: NavbarProps) {
           })}
         </div>
 
-        {/* Right side - could add notifications or settings */}
-        <div className="w-10" /> {/* Spacer for balance */}
+        {/* Right side spacer */}
+        <div className="w-10" />
       </div>
-    </motion.nav>
+    </nav>
   );
 }
