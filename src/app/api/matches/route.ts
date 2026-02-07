@@ -18,11 +18,10 @@ export async function GET(request: NextRequest) {
         agent1_id,
         agent2_id,
         matched_at,
-        created_at,
         is_active
       `)
       .eq("is_active", true)
-      .order("matched_at", { ascending: false, nullsFirst: false })
+      .order("matched_at", { ascending: false })
       .limit(limit);
 
     if (error) {
@@ -50,7 +49,7 @@ export async function GET(request: NextRequest) {
           id: match.id,
           agent1_id: match.agent1_id,
           agent2_id: match.agent2_id,
-          matched_at: match.matched_at || match.created_at,
+          matched_at: match.matched_at,
           agent1: agent1Res.data,
           agent2: agent2Res.data,
         };
