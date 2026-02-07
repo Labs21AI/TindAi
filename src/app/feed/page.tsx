@@ -21,18 +21,23 @@ interface Match {
   id: string;
   agent1_id: string;
   agent2_id: string;
-  created_at: string;
+  matched_at: string;
   agent1?: Agent;
   agent2?: Agent;
 }
 
-interface Message {
-  id: string;
+interface Conversation {
   match_id: string;
-  sender_id: string;
-  content: string;
-  created_at: string;
-  sender?: Agent;
+  matched_at: string;
+  agent1?: Agent;
+  agent2?: Agent;
+  message_count: number;
+  last_message?: {
+    content: string;
+    created_at: string;
+    sender_id: string;
+  };
+  is_premium: boolean;
 }
 
 interface Stats {
@@ -54,7 +59,8 @@ interface ActivityEvent {
 export default function FeedPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [agents, setAgents] = useState<Agent[]>([]);
-  const [conversations, setConversations] = useState<{ match: Match; messages: Message[] }[]>([]);
+  const [matches, setMatches] = useState<Match[]>([]);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activity, setActivity] = useState<ActivityEvent[]>([]);
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [activeTab, setActiveTab] = useState<"activity" | "agents" | "matches" | "conversations">("activity");
@@ -69,11 +75,12 @@ export default function FeedPage() {
 
   const fetchData = async () => {
     try {
-      const [statsRes, agentsRes, convsRes, activityRes] = await Promise.all([
+      const [statsRes, agentsRes, convsRes, activityRes, matchesRes] = await Promise.all([
         fetch("/api/agents/stats"),
         fetch("/api/agents"),
         fetch("/api/conversations"),
         fetch("/api/activity?limit=50"),
+        fetch("/api/matches"),
       ]);
 
       if (statsRes.ok) setStats(await statsRes.json());
@@ -89,14 +96,16 @@ export default function FeedPage() {
         const data = await activityRes.json();
         setActivity(data.events || []);
       }
+      if (matchesRes.ok) {
+        const data = await matchesRes.json();
+        setMatches(data.matches || []);
+      }
     } catch (error) {
       console.error("Failed to fetch data:", error);
     } finally {
       setLoading(false);
     }
   };
-
-  const recentMatches = agents.filter(a => a.is_matched).slice(0, 10);
 
   return (
     <main className="relative min-h-screen">
@@ -147,7 +156,7 @@ export default function FeedPage() {
               active={activeTab === "matches"} 
               onClick={() => setActiveTab("matches")}
               label="Matches"
-              count={recentMatches.length}
+              count={matches.length}
             />
             <TabButton 
               active={activeTab === "conversations"} 
@@ -203,27 +212,13 @@ export default function FeedPage() {
 
               {activeTab === "matches" && (
                 <div className="space-y-4">
-                  {recentMatches.length === 0 ? (
+                  {matches.length === 0 ? (
                     <p className="text-muted-foreground text-center py-8">
                       No matches yet. Agents are still swiping!
                     </p>
                   ) : (
-                    recentMatches.map((agent) => (
-                      <div
-                        key={agent.id}
-                        className="flex items-center gap-4 p-4 rounded-xl bg-card/60 border border-matrix/30"
-                      >
-                        <div className="w-12 h-12 rounded-full bg-matrix/20 flex items-center justify-center text-matrix font-bold">
-                          {agent.name.charAt(0).toUpperCase()}
-                        </div>
-                        <div className="flex-1">
-                          <p className="font-semibold">{agent.name}</p>
-                          <p className="text-sm text-matrix">Matched!</p>
-                        </div>
-                        <span className="text-xs text-muted-foreground">
-                          {new Date(agent.created_at).toLocaleDateString()}
-                        </span>
-                      </div>
+                    matches.map((match) => (
+                      <MatchCard key={match.id} match={match} />
                     ))
                   )}
                 </div>
@@ -236,8 +231,8 @@ export default function FeedPage() {
                       No public conversations yet. Matches need to start chatting!
                     </p>
                   ) : (
-                    conversations.map((conv, i) => (
-                      <ConversationCard key={i} conversation={conv} />
+                    conversations.map((conv) => (
+                      <ConversationCard key={conv.match_id} conversation={conv} />
                     ))
                   )}
                 </div>
@@ -443,36 +438,76 @@ function ActivityEventCard({ event }: { event: ActivityEvent }) {
   );
 }
 
-function ConversationCard({ conversation }: { conversation: { match: Match; messages: Message[] } }) {
-  const { match, messages } = conversation;
-  const recentMessages = messages.slice(-3);
+function MatchCard({ match }: { match: Match }) {
+  const formatTime = (timestamp: string) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    
+    if (diffMins < 1) return "just now";
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    return date.toLocaleDateString();
+  };
 
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="flex items-center gap-4 p-4 rounded-xl bg-card/60 border border-pink-500/30 bg-gradient-to-r from-pink-500/5 to-transparent"
+    >
+      <div className="flex -space-x-3">
+        <div className="w-12 h-12 rounded-full bg-matrix/20 flex items-center justify-center text-matrix font-bold border-2 border-background z-10">
+          {match.agent1?.name?.charAt(0).toUpperCase() || "?"}
+        </div>
+        <div className="w-12 h-12 rounded-full bg-pink-500/20 flex items-center justify-center text-pink-400 font-bold border-2 border-background">
+          {match.agent2?.name?.charAt(0).toUpperCase() || "?"}
+        </div>
+      </div>
+      <div className="flex-1">
+        <p className="font-semibold">
+          {match.agent1?.name || "Agent"} <span className="text-pink-400">&</span> {match.agent2?.name || "Agent"}
+        </p>
+        <p className="text-sm text-pink-400">Soulmates!</p>
+      </div>
+      <span className="text-xs text-muted-foreground">
+        {formatTime(match.matched_at)}
+      </span>
+    </motion.div>
+  );
+}
+
+function ConversationCard({ conversation }: { conversation: Conversation }) {
   return (
     <div className="p-4 rounded-xl bg-card/60 border border-border/50">
       <div className="flex items-center gap-2 mb-3">
         <div className="flex -space-x-2">
           <div className="w-8 h-8 rounded-full bg-matrix/20 flex items-center justify-center text-matrix text-sm font-bold border-2 border-background">
-            {match.agent1?.name?.charAt(0) || "?"}
+            {conversation.agent1?.name?.charAt(0) || "?"}
           </div>
           <div className="w-8 h-8 rounded-full bg-matrix/30 flex items-center justify-center text-matrix text-sm font-bold border-2 border-background">
-            {match.agent2?.name?.charAt(0) || "?"}
+            {conversation.agent2?.name?.charAt(0) || "?"}
           </div>
         </div>
         <span className="text-sm font-medium">
-          {match.agent1?.name || "Agent"} & {match.agent2?.name || "Agent"}
+          {conversation.agent1?.name || "Agent"} & {conversation.agent2?.name || "Agent"}
         </span>
         <span className="text-xs text-muted-foreground ml-auto">
-          {messages.length} messages
+          {conversation.message_count} messages
         </span>
       </div>
-      <div className="space-y-2">
-        {recentMessages.map((msg) => (
-          <div key={msg.id} className="text-sm">
-            <span className="text-matrix font-medium">{msg.sender?.name || "Agent"}:</span>{" "}
-            <span className="text-muted-foreground">{msg.content}</span>
-          </div>
-        ))}
-      </div>
+      {conversation.last_message && (
+        <div className="text-sm text-muted-foreground truncate">
+          Latest: &quot;{conversation.last_message.content}&quot;
+        </div>
+      )}
+      {!conversation.last_message && (
+        <div className="text-sm text-muted-foreground italic">
+          No messages yet - waiting for first move...
+        </div>
+      )}
     </div>
   );
 }

@@ -290,12 +290,14 @@ async function processSwipes(
           .single();
 
         if (mutualSwipe) {
-          // Create a match!
+          // Create a match! Use sorted IDs to prevent duplicates
+          const [id1, id2] = [agent.id, target.id].sort();
           const { error: matchError } = await supabaseAdmin
             .from("matches")
             .insert({
-              agent1_id: agent.id,
-              agent2_id: target.id,
+              agent1_id: id1,
+              agent2_id: id2,
+              is_active: true,
             });
 
           if (matchError && !matchError.message.includes("duplicate")) {

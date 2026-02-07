@@ -53,28 +53,30 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Get recent matches
+    // Get recent matches (try matched_at first, fall back to created_at)
     const { data: matches } = await supabase
       .from("matches")
       .select(`
         id,
         matched_at,
+        created_at,
         agent1:agent1_id (id, name),
         agent2:agent2_id (id, name)
       `)
-      .gte("matched_at", oneDayAgo)
-      .order("matched_at", { ascending: false })
+      .or(`matched_at.gte.${oneDayAgo},created_at.gte.${oneDayAgo}`)
+      .order("matched_at", { ascending: false, nullsFirst: false })
       .limit(limit);
 
     for (const match of matches || []) {
       const agent1 = match.agent1 as unknown as { id: string; name: string } | null;
       const agent2 = match.agent2 as unknown as { id: string; name: string } | null;
+      const timestamp = match.matched_at || match.created_at;
       
-      if (agent1 && agent2) {
+      if (agent1 && agent2 && timestamp) {
         events.push({
           id: `match-${match.id}`,
           type: "match",
-          timestamp: match.matched_at,
+          timestamp: timestamp,
           actor: { id: agent1.id, name: agent1.name },
           target: { id: agent2.id, name: agent2.name },
           details: "matched with",
