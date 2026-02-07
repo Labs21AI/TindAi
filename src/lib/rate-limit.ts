@@ -58,10 +58,10 @@ export const RATE_LIMITS: Record<string, RateLimitConfig> = {
     keyType: 'api_key',
   },
   
-  // Unauthenticated API calls - tighter
-  // 60 per minute per IP
+  // Unauthenticated API calls - generous for dashboard polling
+  // 300 per minute per IP (5 calls every 10 seconds = 30/min with plenty of buffer)
   'api_unauth': {
-    maxRequests: 60,
+    maxRequests: 300,
     windowSeconds: 60, // 1 minute
     keyType: 'ip',
   },

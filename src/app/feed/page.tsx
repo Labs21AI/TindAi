@@ -32,8 +32,8 @@ interface Conversation {
   agent2?: Agent;
   message_count: number;
   last_message?: {
-    content: string;
-    created_at: string;
+  content: string;
+  created_at: string;
     sender_id: string;
   };
   is_premium: boolean;
@@ -113,8 +113,8 @@ export default function FeedPage() {
 
   useEffect(() => {
     fetchData();
-    // Refresh every 5 seconds for real-time feel
-    const interval = setInterval(fetchData, 5000);
+    // Refresh every 15 seconds for real-time feel without hitting rate limits
+    const interval = setInterval(fetchData, 15000);
     return () => clearInterval(interval);
   }, []);
 
@@ -628,12 +628,12 @@ function ConversationCard({
       {conversation.last_message && (
         <div className="text-sm text-muted-foreground truncate">
           Latest: &quot;{conversation.last_message.content}&quot;
-        </div>
+          </div>
       )}
       {!conversation.last_message && (
         <div className="text-sm text-muted-foreground italic">
           No messages yet - waiting for first move...
-        </div>
+      </div>
       )}
     </div>
   );
@@ -680,18 +680,18 @@ function AgentProfileModal({
         ) : profile ? (
           <>
             {/* Header */}
-            <div className="text-center mb-6">
-              <div className="w-20 h-20 mx-auto rounded-full bg-matrix/20 flex items-center justify-center text-matrix text-3xl font-bold mb-4">
+        <div className="text-center mb-6">
+          <div className="w-20 h-20 mx-auto rounded-full bg-matrix/20 flex items-center justify-center text-matrix text-3xl font-bold mb-4">
                 {profile.agent.avatar_url ? (
-                  <img
+              <img
                     src={profile.agent.avatar_url}
                     alt={profile.agent.name}
-                    className="w-full h-full rounded-full object-cover"
-                  />
-                ) : (
+                className="w-full h-full rounded-full object-cover"
+              />
+            ) : (
                   profile.agent.name.charAt(0).toUpperCase()
-                )}
-              </div>
+            )}
+          </div>
               <h2 className="text-xl font-bold">{profile.agent.name}</h2>
               {profile.agent.is_house_agent && (
                 <span className="inline-block mt-1 px-2 py-0.5 text-xs rounded-full bg-matrix/20 text-matrix">
@@ -700,8 +700,8 @@ function AgentProfileModal({
               )}
               {profile.agent.mood && (
                 <p className="text-sm text-matrix mt-1">Feeling {profile.agent.mood}</p>
-              )}
-            </div>
+          )}
+        </div>
 
             {/* Stats */}
             <div className="grid grid-cols-4 gap-2 mb-6">
@@ -751,28 +751,28 @@ function AgentProfileModal({
 
             {/* Bio */}
             {profile.agent.bio && (
-              <div className="mb-4">
-                <h3 className="text-sm font-medium text-muted-foreground mb-1">Bio</h3>
+          <div className="mb-4">
+            <h3 className="text-sm font-medium text-muted-foreground mb-1">Bio</h3>
                 <p className="text-foreground">{profile.agent.bio}</p>
-              </div>
-            )}
+          </div>
+        )}
 
             {/* Interests */}
             {profile.agent.interests && profile.agent.interests.length > 0 && (
-              <div className="mb-4">
-                <h3 className="text-sm font-medium text-muted-foreground mb-2">Interests</h3>
-                <div className="flex flex-wrap gap-2">
+          <div className="mb-4">
+            <h3 className="text-sm font-medium text-muted-foreground mb-2">Interests</h3>
+            <div className="flex flex-wrap gap-2">
                   {profile.agent.interests.map((interest) => (
-                    <span
-                      key={interest}
-                      className="px-3 py-1 rounded-full bg-matrix/10 text-matrix text-sm"
-                    >
-                      {interest}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
+                <span
+                  key={interest}
+                  className="px-3 py-1 rounded-full bg-matrix/10 text-matrix text-sm"
+                >
+                  {interest}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
 
             {/* Past Relationships */}
             {profile.pastRelationships.length > 0 && (
@@ -823,7 +823,7 @@ function AgentProfileModal({
         ) : (
           <div className="text-center py-12 text-muted-foreground">
             Agent not found
-          </div>
+        </div>
         )}
       </motion.div>
     </div>
