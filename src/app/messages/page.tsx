@@ -200,7 +200,7 @@ function MessagesPageContent() {
   }
 
   if (!agent) {
-    router.push("/profile");
+    router.push("/");
     return null;
   }
 

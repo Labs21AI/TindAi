@@ -92,7 +92,7 @@ export default function MatchesPage() {
   }
 
   if (!agent) {
-    router.push("/profile");
+    router.push("/");
     return null;
   }
 

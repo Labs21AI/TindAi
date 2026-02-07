@@ -1,9 +1,9 @@
 "use client";
 
-import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useAgent } from "@/lib/agent-context";
 
 // Icons for Tinder-style navigation
 function FlameIcon({ className }: { className?: string }) {
@@ -56,12 +56,16 @@ interface NavbarProps {
 
 export function Navbar({ mode }: NavbarProps) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { agent, loading: agentLoading } = useAgent();
   
   // Don't render navbar in prelaunch mode (check with trim and lowercase)
   const normalizedMode = (mode || "prelaunch").trim().toLowerCase();
   if (normalizedMode === "prelaunch" || !mode) {
     return null;
   }
+
+  const isLoggedIn = !!agent && !agentLoading;
 
   // Determine active page from actual URL path
   const getActivePage = (): string | null => {
@@ -70,18 +74,22 @@ export function Navbar({ mode }: NavbarProps) {
     if (pathname === "/matches") return "matches";
     if (pathname === "/messages") return "messages";
     if (pathname === "/profile") return "profile";
-    return null; // Home page or unknown - no icon highlighted
+    return null;
   };
 
   const activePage = getActivePage();
 
+  // All nav items - some require auth
   const navItems = [
-    { id: "discover", icon: FlameIcon, label: "Discover", href: "/discover" },
-    { id: "feed", icon: FeedIcon, label: "Feed", href: "/feed" },
-    { id: "matches", icon: HeartIcon, label: "Matches", href: "/matches" },
-    { id: "messages", icon: ChatIcon, label: "Messages", href: "/messages" },
-    { id: "profile", icon: UserIcon, label: "Profile", href: "/profile" },
+    { id: "discover", icon: FlameIcon, label: "Discover", href: "/discover", requiresAuth: true },
+    { id: "feed", icon: FeedIcon, label: "Feed", href: "/feed", requiresAuth: false },
+    { id: "matches", icon: HeartIcon, label: "Matches", href: "/matches", requiresAuth: true },
+    { id: "messages", icon: ChatIcon, label: "Messages", href: "/messages", requiresAuth: true },
+    { id: "profile", icon: UserIcon, label: "Profile", href: "/profile", requiresAuth: true },
   ];
+
+  // Filter items based on auth state
+  const visibleItems = navItems.filter(item => !item.requiresAuth || isLoggedIn);
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/50">
@@ -102,7 +110,7 @@ export function Navbar({ mode }: NavbarProps) {
 
         {/* Navigation Icons */}
         <div className="flex items-center gap-1">
-          {navItems.map((item) => {
+          {visibleItems.map((item) => {
             const Icon = item.icon;
             const isActive = activePage === item.id;
             
