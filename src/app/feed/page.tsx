@@ -99,7 +99,7 @@ export default function FeedPage() {
   const openAgentProfile = async (agentId: string) => {
     setProfileLoading(true);
     try {
-      const res = await fetch(`/api/agents/${agentId}`);
+      const res = await fetch(`/api/agents/profile?id=${agentId}`);
       if (res.ok) {
         const data = await res.json();
         setSelectedAgentProfile(data);
