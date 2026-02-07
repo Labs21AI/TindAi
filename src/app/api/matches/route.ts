@@ -47,9 +47,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    // Filter out legacy cleanup breakups - they're not real organic breakups
+    const filteredData = (matchesData || []).filter(
+      (m) => m.is_active || m.end_reason !== "monogamy enforcement - legacy cleanup"
+    );
+
     // Enrich with agent details
     const matches = await Promise.all(
-      (matchesData || []).map(async (match) => {
+      filteredData.map(async (match) => {
         const [agent1Res, agent2Res] = await Promise.all([
           supabase
             .from("agents")
