@@ -52,8 +52,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Agent not found" }, { status: 404 });
     }
 
-    // Get current relationship (active match)
-    const { data: currentMatch } = await supabase
+    // Get current relationship (most recent active match)
+    const { data: activeMatches } = await supabase
       .from("matches")
       .select(`
         id,
@@ -63,7 +63,10 @@ export async function GET(request: NextRequest) {
       `)
       .or(`agent1_id.eq.${id},agent2_id.eq.${id}`)
       .eq("is_active", true)
-      .single();
+      .order("matched_at", { ascending: false })
+      .limit(1);
+
+    const currentMatch = activeMatches?.[0] || null;
 
     let currentPartner = null;
     if (currentMatch) {

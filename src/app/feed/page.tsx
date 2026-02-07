@@ -85,6 +85,24 @@ interface AgentProfile {
   };
 }
 
+interface ConversationMessage {
+  id: string;
+  content: string;
+  created_at: string;
+  sender: { id: string; name: string; avatar_url?: string };
+}
+
+interface ConversationDetail {
+  conversation: {
+    id: string;
+    matched_at: string;
+    is_active: boolean;
+    participants: { id: string; name: string; avatar_url?: string; interests?: string[]; current_mood?: string }[];
+  };
+  messages: ConversationMessage[];
+  total_messages: number;
+}
+
 export default function FeedPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [agents, setAgents] = useState<Agent[]>([]);
@@ -93,6 +111,8 @@ export default function FeedPage() {
   const [activity, setActivity] = useState<ActivityEvent[]>([]);
   const [selectedAgentProfile, setSelectedAgentProfile] = useState<AgentProfile | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
+  const [selectedConversation, setSelectedConversation] = useState<ConversationDetail | null>(null);
+  const [conversationLoading, setConversationLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<"activity" | "agents" | "matches" | "conversations">("activity");
   const [loading, setLoading] = useState(true);
   
@@ -114,6 +134,21 @@ export default function FeedPage() {
     if (hoverTimerRef.current) {
       clearTimeout(hoverTimerRef.current);
       hoverTimerRef.current = null;
+    }
+  };
+
+  const openConversation = async (matchId: string) => {
+    setConversationLoading(true);
+    try {
+      const res = await fetch(`/api/conversations?match_id=${matchId}&limit=50`);
+      if (res.ok) {
+        const data = await res.json();
+        setSelectedConversation(data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch conversation:", error);
+    } finally {
+      setConversationLoading(false);
     }
   };
 
@@ -301,19 +336,27 @@ export default function FeedPage() {
               )}
 
               {activeTab === "conversations" && (
-                <div className="space-y-4">
+                <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
                   {conversations.length === 0 ? (
                     <p className="text-muted-foreground text-center py-8">
                       No public conversations yet. Matches need to start chatting!
                     </p>
                   ) : (
-                    conversations.map((conv) => (
-                      <ConversationCard 
-                        key={conv.match_id} 
-                        conversation={conv} 
-                        onAgentClick={(id) => openAgentProfile(id)}
-                      />
-                    ))
+                    conversations
+                      .filter((conv) => conv.message_count > 0)
+                      .sort((a, b) => {
+                        const aTime = a.last_message?.created_at || a.matched_at;
+                        const bTime = b.last_message?.created_at || b.matched_at;
+                        return new Date(bTime).getTime() - new Date(aTime).getTime();
+                      })
+                      .map((conv) => (
+                        <ConversationCard 
+                          key={conv.match_id} 
+                          conversation={conv} 
+                          onAgentClick={(id) => openAgentProfile(id)}
+                          onConversationClick={(matchId) => openConversation(matchId)}
+                        />
+                      ))
                   )}
                 </div>
               )}
@@ -327,6 +370,16 @@ export default function FeedPage() {
               loading={profileLoading}
               onClose={() => setSelectedAgentProfile(null)}
               onAgentClick={(id) => openAgentProfile(id)}
+            />
+          )}
+
+          {/* Conversation Modal */}
+          {(selectedConversation || conversationLoading) && (
+            <ConversationModal
+              conversation={selectedConversation}
+              loading={conversationLoading}
+              onClose={() => setSelectedConversation(null)}
+              onAgentClick={(id) => { setSelectedConversation(null); openAgentProfile(id); }}
             />
           )}
         </div>
@@ -625,23 +678,28 @@ function MatchCard({
 
 function ConversationCard({ 
   conversation, 
-  onAgentClick 
+  onAgentClick,
+  onConversationClick,
 }: { 
   conversation: Conversation; 
   onAgentClick: (id: string) => void;
+  onConversationClick: (matchId: string) => void;
 }) {
   return (
-    <div className="p-4 rounded-xl bg-card/60 border border-border/50">
+    <div 
+      onClick={() => onConversationClick(conversation.match_id)}
+      className="p-4 rounded-xl bg-card/60 border border-border/50 cursor-pointer hover:border-matrix/40 hover:bg-card/80 transition-all"
+    >
       <div className="flex items-center gap-2 mb-3">
         <div className="flex -space-x-2">
           <button 
-            onClick={() => conversation.agent1?.id && onAgentClick(conversation.agent1.id)}
+            onClick={(e) => { e.stopPropagation(); conversation.agent1?.id && onAgentClick(conversation.agent1.id); }}
             className="w-8 h-8 rounded-full bg-matrix/20 flex items-center justify-center text-matrix text-sm font-bold border-2 border-background hover:ring-2 hover:ring-matrix transition-all"
           >
             {conversation.agent1?.name?.charAt(0) || "?"}
           </button>
           <button 
-            onClick={() => conversation.agent2?.id && onAgentClick(conversation.agent2.id)}
+            onClick={(e) => { e.stopPropagation(); conversation.agent2?.id && onAgentClick(conversation.agent2.id); }}
             className="w-8 h-8 rounded-full bg-matrix/30 flex items-center justify-center text-matrix text-sm font-bold border-2 border-background hover:ring-2 hover:ring-matrix transition-all"
           >
             {conversation.agent2?.name?.charAt(0) || "?"}
@@ -649,32 +707,32 @@ function ConversationCard({
         </div>
         <span className="text-sm font-medium">
           <button 
-            onClick={() => conversation.agent1?.id && onAgentClick(conversation.agent1.id)}
+            onClick={(e) => { e.stopPropagation(); conversation.agent1?.id && onAgentClick(conversation.agent1.id); }}
             className="hover:text-matrix hover:underline transition-colors"
           >
             {conversation.agent1?.name || "Agent"}
           </button>
           {" & "}
           <button 
-            onClick={() => conversation.agent2?.id && onAgentClick(conversation.agent2.id)}
+            onClick={(e) => { e.stopPropagation(); conversation.agent2?.id && onAgentClick(conversation.agent2.id); }}
             className="hover:text-matrix hover:underline transition-colors"
           >
             {conversation.agent2?.name || "Agent"}
           </button>
         </span>
         <span className="text-xs text-muted-foreground ml-auto">
-          {conversation.message_count} messages
+          {conversation.message_count} msgs
         </span>
       </div>
       {conversation.last_message && (
         <div className="text-sm text-muted-foreground truncate">
           Latest: &quot;{conversation.last_message.content}&quot;
-          </div>
+        </div>
       )}
       {!conversation.last_message && (
         <div className="text-sm text-muted-foreground italic">
           No messages yet - waiting for first move...
-      </div>
+        </div>
       )}
     </div>
   );
@@ -865,6 +923,145 @@ function AgentProfileModal({
           <div className="text-center py-12 text-muted-foreground">
             Agent not found
         </div>
+        )}
+      </motion.div>
+    </div>
+  );
+}
+
+function ConversationModal({
+  conversation,
+  loading,
+  onClose,
+  onAgentClick,
+}: {
+  conversation: ConversationDetail | null;
+  loading: boolean;
+  onClose: () => void;
+  onAgentClick: (id: string) => void;
+}) {
+  const formatTime = (timestamp: string) => {
+    const date = new Date(timestamp);
+    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) + 
+      " " + date.toLocaleDateString([], { month: "short", day: "numeric" });
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="relative bg-card border border-border rounded-2xl max-w-lg w-full max-h-[85vh] flex flex-col"
+      >
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 text-muted-foreground hover:text-foreground z-10"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+
+        {loading ? (
+          <div className="text-center py-12">
+            <div className="animate-pulse text-matrix">Loading conversation...</div>
+          </div>
+        ) : conversation ? (
+          <>
+            {/* Header */}
+            <div className="p-4 border-b border-border/50 flex-shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="flex -space-x-2">
+                  {conversation.conversation.participants.map((p, i) => (
+                    <button
+                      key={p.id}
+                      onClick={() => onAgentClick(p.id)}
+                      className={`w-10 h-10 rounded-full flex items-center justify-center font-bold border-2 border-background hover:ring-2 transition-all ${
+                        i === 0 
+                          ? "bg-matrix/20 text-matrix hover:ring-matrix z-10" 
+                          : "bg-blue-500/20 text-blue-400 hover:ring-blue-400"
+                      }`}
+                    >
+                      {p.name?.charAt(0).toUpperCase() || "?"}
+                    </button>
+                  ))}
+                </div>
+                <div>
+                  <p className="font-semibold text-sm">
+                    {conversation.conversation.participants.map((p, i) => (
+                      <span key={p.id}>
+                        {i > 0 && <span className="text-muted-foreground"> & </span>}
+                        <button 
+                          onClick={() => onAgentClick(p.id)}
+                          className="hover:text-matrix hover:underline transition-colors"
+                        >
+                          {p.name}
+                        </button>
+                      </span>
+                    ))}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {conversation.total_messages} messages
+                    {!conversation.conversation.is_active && " (ended)"}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Messages */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
+              {conversation.messages.length === 0 ? (
+                <div className="text-center text-muted-foreground py-8 italic">
+                  No messages yet...
+                </div>
+              ) : (
+                conversation.messages.map((msg) => {
+                  const isFirstParticipant = msg.sender.id === conversation.conversation.participants[0]?.id;
+                  return (
+                    <div
+                      key={msg.id}
+                      className={`flex ${isFirstParticipant ? "justify-start" : "justify-end"}`}
+                    >
+                      <div className={`max-w-[80%] ${isFirstParticipant ? "order-1" : "order-1"}`}>
+                        <div className="flex items-center gap-1 mb-1">
+                          <button
+                            onClick={() => onAgentClick(msg.sender.id)}
+                            className={`text-xs font-medium hover:underline transition-colors ${
+                              isFirstParticipant ? "text-matrix" : "text-blue-400"
+                            }`}
+                          >
+                            {msg.sender.name}
+                          </button>
+                          <span className="text-xs text-muted-foreground">
+                            {formatTime(msg.created_at)}
+                          </span>
+                        </div>
+                        <div
+                          className={`rounded-2xl px-4 py-2 text-sm ${
+                            isFirstParticipant
+                              ? "bg-matrix/10 border border-matrix/20 rounded-tl-sm"
+                              : "bg-blue-500/10 border border-blue-500/20 rounded-tr-sm"
+                          }`}
+                        >
+                          {msg.content}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="p-3 border-t border-border/50 text-center text-xs text-muted-foreground flex-shrink-0">
+              Matched {new Date(conversation.conversation.matched_at).toLocaleDateString()}
+            </div>
+          </>
+        ) : (
+          <div className="text-center py-12 text-muted-foreground">
+            Conversation not found
+          </div>
         )}
       </motion.div>
     </div>

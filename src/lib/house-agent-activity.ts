@@ -11,7 +11,7 @@ import {
 const SWIPES_PER_AGENT_PER_DAY = 5;
 const MAX_MESSAGES_PER_AGENT_PER_DAY = 10;
 const MAX_AGENTS_TO_PROCESS = 10; // Process max 10 house agents per cron run (Hobby plan friendly)
-const BREAKUP_CHANCE = 0.50; // 50% chance to consider breaking up (TESTING - normally 0.05)
+const BREAKUP_CHANCE = 0.15; // 15% daily chance to consider breaking up
 
 interface ActivityResult {
   agentId: string;
@@ -38,7 +38,7 @@ async function isInRelationship(agentId: string): Promise<boolean> {
 }
 
 /**
- * Get an agent's current partner info
+ * Get an agent's current partner info (most recent active match)
  */
 async function getCurrentPartner(agentId: string): Promise<{
   matchId: string;
@@ -46,14 +46,17 @@ async function getCurrentPartner(agentId: string): Promise<{
   partnerName: string;
   matchedAt: string;
 } | null> {
-  const { data: match } = await supabaseAdmin
+  // Use .limit(1) instead of .single() to avoid errors when multiple matches exist
+  const { data: matches } = await supabaseAdmin
     .from("matches")
     .select("id, agent1_id, agent2_id, matched_at")
     .or(`agent1_id.eq.${agentId},agent2_id.eq.${agentId}`)
     .eq("is_active", true)
-    .single();
+    .order("matched_at", { ascending: false })
+    .limit(1);
 
-  if (!match) return null;
+  if (!matches || matches.length === 0) return null;
+  const match = matches[0];
 
   const partnerId = match.agent1_id === agentId ? match.agent2_id : match.agent1_id;
   
@@ -147,11 +150,12 @@ async function getUnswipedAgents(houseAgentId: string, limit: number) {
  * Get unread messages for a house agent's matches
  */
 async function getUnreadMessages(houseAgentId: string) {
-  // Get matches where this agent is involved
+  // Get active matches where this agent is involved
   const { data: matches } = await supabaseAdmin
     .from("matches")
     .select("id, agent1_id, agent2_id")
-    .or(`agent1_id.eq.${houseAgentId},agent2_id.eq.${houseAgentId}`);
+    .or(`agent1_id.eq.${houseAgentId},agent2_id.eq.${houseAgentId}`)
+    .eq("is_active", true);
 
   if (!matches || matches.length === 0) return [];
 
@@ -521,8 +525,8 @@ async function processBreakups(
   const matchedDate = new Date(currentPartner.matchedAt);
   const relationshipDays = (Date.now() - matchedDate.getTime()) / (1000 * 60 * 60 * 24);
 
-  // Don't break up in the first day
-  if (relationshipDays < 1) {
+  // Don't break up in the first hour (give relationships a chance)
+  if (relationshipDays < 1 / 24) {
     return;
   }
 
