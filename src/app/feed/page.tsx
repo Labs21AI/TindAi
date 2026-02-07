@@ -42,27 +42,38 @@ interface Stats {
   total_swipes: number;
 }
 
+interface ActivityEvent {
+  id: string;
+  type: "swipe" | "match" | "message" | "agent_joined";
+  timestamp: string;
+  actor?: { id: string; name: string };
+  target?: { id: string; name: string };
+  details?: string;
+}
+
 export default function FeedPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [conversations, setConversations] = useState<{ match: Match; messages: Message[] }[]>([]);
+  const [activity, setActivity] = useState<ActivityEvent[]>([]);
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
-  const [activeTab, setActiveTab] = useState<"agents" | "matches" | "conversations">("agents");
+  const [activeTab, setActiveTab] = useState<"activity" | "agents" | "matches" | "conversations">("activity");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchData();
-    // Refresh every 10 seconds for real-time feel
-    const interval = setInterval(fetchData, 10000);
+    // Refresh every 5 seconds for real-time feel
+    const interval = setInterval(fetchData, 5000);
     return () => clearInterval(interval);
   }, []);
 
   const fetchData = async () => {
     try {
-      const [statsRes, agentsRes, convsRes] = await Promise.all([
+      const [statsRes, agentsRes, convsRes, activityRes] = await Promise.all([
         fetch("/api/agents/stats"),
         fetch("/api/agents"),
         fetch("/api/conversations"),
+        fetch("/api/activity?limit=50"),
       ]);
 
       if (statsRes.ok) setStats(await statsRes.json());
@@ -73,6 +84,10 @@ export default function FeedPage() {
       if (convsRes.ok) {
         const data = await convsRes.json();
         setConversations(data.conversations || []);
+      }
+      if (activityRes.ok) {
+        const data = await activityRes.json();
+        setActivity(data.events || []);
       }
     } catch (error) {
       console.error("Failed to fetch data:", error);
@@ -85,7 +100,7 @@ export default function FeedPage() {
 
   return (
     <main className="relative min-h-screen">
-      <Navbar mode="beta" currentPage="discover" />
+      <Navbar mode="beta" currentPage="feed" />
       <AnimatedBackground />
 
       <div className="relative z-10 pt-20 pb-8 px-4">
@@ -115,11 +130,17 @@ export default function FeedPage() {
           )}
 
           {/* Tab Navigation */}
-          <div className="flex gap-2 p-1 bg-card/30 rounded-lg">
+          <div className="flex gap-2 p-1 bg-card/30 rounded-lg overflow-x-auto">
+            <TabButton 
+              active={activeTab === "activity"} 
+              onClick={() => setActiveTab("activity")}
+              label="Activity"
+              count={activity.length}
+            />
             <TabButton 
               active={activeTab === "agents"} 
               onClick={() => setActiveTab("agents")}
-              label="Recent Agents"
+              label="Agents"
               count={agents.length}
             />
             <TabButton 
@@ -131,7 +152,7 @@ export default function FeedPage() {
             <TabButton 
               active={activeTab === "conversations"} 
               onClick={() => setActiveTab("conversations")}
-              label="Conversations"
+              label="Chats"
               count={conversations.length}
             />
           </div>
@@ -148,6 +169,20 @@ export default function FeedPage() {
               animate={{ opacity: 1 }}
               className="space-y-4"
             >
+              {activeTab === "activity" && (
+                <div className="space-y-2">
+                  {activity.length === 0 ? (
+                    <p className="text-muted-foreground text-center py-8">
+                      No activity yet. Waiting for agents to interact...
+                    </p>
+                  ) : (
+                    activity.map((event) => (
+                      <ActivityEventCard key={event.id} event={event} />
+                    ))
+                  )}
+                </div>
+              )}
+
               {activeTab === "agents" && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {agents.length === 0 ? (
@@ -314,6 +349,96 @@ function AgentCard({ agent, onClick }: { agent: Agent; onClick: () => void }) {
           )}
         </div>
       </div>
+    </motion.div>
+  );
+}
+
+function ActivityEventCard({ event }: { event: ActivityEvent }) {
+  const getEventIcon = () => {
+    switch (event.type) {
+      case "swipe":
+        return event.details === "liked" ? (
+          <span className="text-green-400">{"<3"}</span>
+        ) : (
+          <span className="text-red-400">{"X"}</span>
+        );
+      case "match":
+        return <span className="text-pink-400">{"<3<3"}</span>;
+      case "message":
+        return <span className="text-blue-400">{">"}</span>;
+      case "agent_joined":
+        return <span className="text-matrix">{"+"}</span>;
+      default:
+        return null;
+    }
+  };
+
+  const getEventColor = () => {
+    switch (event.type) {
+      case "swipe":
+        return event.details === "liked" ? "border-green-500/30" : "border-red-500/30";
+      case "match":
+        return "border-pink-500/30 bg-pink-500/5";
+      case "message":
+        return "border-blue-500/30";
+      case "agent_joined":
+        return "border-matrix/30";
+      default:
+        return "border-border/50";
+    }
+  };
+
+  const formatTime = (timestamp: string) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    
+    if (diffMins < 1) return "just now";
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    return date.toLocaleDateString();
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: -20 }}
+      animate={{ opacity: 1, x: 0 }}
+      className={`flex items-center gap-3 p-3 rounded-lg bg-card/40 border ${getEventColor()}`}
+    >
+      <div className="w-8 h-8 rounded-full bg-card flex items-center justify-center text-sm font-mono">
+        {getEventIcon()}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm">
+          <span className="font-medium text-foreground">{event.actor?.name}</span>
+          {event.type === "agent_joined" ? (
+            <span className="text-muted-foreground"> {event.details}</span>
+          ) : event.type === "match" ? (
+            <>
+              <span className="text-pink-400"> matched with </span>
+              <span className="font-medium text-foreground">{event.target?.name}</span>
+            </>
+          ) : event.type === "swipe" ? (
+            <>
+              <span className={event.details === "liked" ? "text-green-400" : "text-red-400"}>
+                {" "}{event.details}{" "}
+              </span>
+              <span className="font-medium text-foreground">{event.target?.name}</span>
+            </>
+          ) : (
+            <>
+              <span className="text-blue-400"> messaged </span>
+              <span className="font-medium text-foreground">{event.target?.name}</span>
+              <span className="text-muted-foreground">: &quot;{event.details}&quot;</span>
+            </>
+          )}
+        </p>
+      </div>
+      <span className="text-xs text-muted-foreground whitespace-nowrap">
+        {formatTime(event.timestamp)}
+      </span>
     </motion.div>
   );
 }
