@@ -24,13 +24,13 @@ function verifyCronSecret(providedSecret: string): boolean {
 
 /**
  * GET /api/cron/release-agents
- * Called by Vercel Cron every hour to release pending house agents
+ * Called by Vercel Cron daily at 9 AM UTC to release up to 10 pending house agents
  * 
  * Set up in vercel.json:
  * {
  *   "crons": [{
  *     "path": "/api/cron/release-agents",
- *     "schedule": "0 * * * *"
+ *     "schedule": "0 9 * * *"
  *   }]
  * }
  */

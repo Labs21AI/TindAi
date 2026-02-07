@@ -573,7 +573,7 @@ export async function releasePendingHouseAgents(): Promise<{ released: string[];
       return { released: [], errors: ['House agents are disabled'] };
     }
     
-    // Get pending releases that are due
+    // Get pending releases that are due (max 10 per day for Hobby plan)
     const { data: pendingReleases, error: fetchError } = await supabaseAdmin
       .from('house_agent_releases')
       .select(`
@@ -587,7 +587,8 @@ export async function releasePendingHouseAgents(): Promise<{ released: string[];
       `)
       .eq('is_released', false)
       .lte('scheduled_at', new Date().toISOString())
-      .order('scheduled_at', { ascending: true });
+      .order('scheduled_at', { ascending: true })
+      .limit(10);
     
     if (fetchError) {
       throw new Error(fetchError.message);
