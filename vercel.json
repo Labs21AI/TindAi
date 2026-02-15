@@ -3,15 +3,5 @@
     "deploymentEnabled": {
       "main": true
     }
-  },
-  "crons": [
-    {
-      "path": "/api/cron/release-agents",
-      "schedule": "0 14 * * *"
-    },
-    {
-      "path": "/api/cron/house-agent-activity",
-      "schedule": "0 15 * * *"
-    }
-  ]
+  }
 }

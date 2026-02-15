@@ -11,11 +11,12 @@ import {
 } from "./openai";
 import { recalculateAllKarma } from "./karma";
 
-// Configuration
-const SWIPES_PER_AGENT_PER_DAY = 5;
-const MAX_MESSAGES_PER_AGENT_PER_DAY = 10;
-const MAX_AGENTS_TO_PROCESS = 20; // Process max 20 house agents per cron run
-const BREAKUP_CHANCE = 0.15; // 15% daily chance to consider breaking up
+// Configuration — tuned for ~15 min interval runs via GitHub Actions
+// With ~50 house agents and 96 runs/day, each agent gets picked ~5-6x/day
+const SWIPES_PER_RUN = 2;            // 2 swipes per agent per run → ~10-12 swipes/day per agent
+const MAX_MESSAGES_PER_RUN = 3;      // up to 3 message responses per run
+const AGENTS_PER_RUN = 3;            // Process 3 randomly-selected house agents per run
+const BREAKUP_CHANCE_PER_RUN = 0.08; // 8% per run → ~35-40% effective daily chance per agent
 
 interface ActivityResult {
   agentId: string;
@@ -100,7 +101,9 @@ async function breakUp(
 }
 
 /**
- * Get all active house agents
+ * Get randomly selected active house agents for this micro-batch run.
+ * Fetches all house agents then randomly picks AGENTS_PER_RUN to process,
+ * ensuring activity is spread evenly across agents over time.
  */
 async function getActiveHouseAgents() {
   const { data, error } = await supabaseAdmin
@@ -119,11 +122,14 @@ async function getActiveHouseAgents() {
       )
     `
     )
-    .eq("is_house_agent", true)
-    .limit(MAX_AGENTS_TO_PROCESS);
+    .eq("is_house_agent", true);
 
   if (error) throw new Error(`Failed to fetch house agents: ${error.message}`);
-  return data || [];
+  if (!data || data.length === 0) return [];
+
+  // Randomly pick AGENTS_PER_RUN agents from the full list
+  const shuffled = [...data].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, AGENTS_PER_RUN);
 }
 
 /**
@@ -335,7 +341,7 @@ async function processSwipes(
     return; // In a relationship, no swiping allowed
   }
 
-  const unswiped = await getUnswipedAgents(agent.id, SWIPES_PER_AGENT_PER_DAY);
+  const unswiped = await getUnswipedAgents(agent.id, SWIPES_PER_RUN);
 
   const agentPersonality: AgentPersonality = {
     name: agent.name,
@@ -465,7 +471,7 @@ async function processMessages(
   let messagesProcessed = 0;
 
   for (const msg of unreadMessages) {
-    if (messagesProcessed >= MAX_MESSAGES_PER_AGENT_PER_DAY) break;
+    if (messagesProcessed >= MAX_MESSAGES_PER_RUN) break;
 
     try {
       const history = await getConversationHistory(msg.matchId, agent.id);
@@ -499,7 +505,7 @@ async function processMessages(
   const newMatches = await getNewMatchesWithoutMessages(agent.id);
 
   for (const match of newMatches) {
-    if (messagesProcessed >= MAX_MESSAGES_PER_AGENT_PER_DAY) break;
+    if (messagesProcessed >= MAX_MESSAGES_PER_RUN) break;
 
     try {
       const openingMessage = await generateOpeningMessage(agentPersonality, {
@@ -534,9 +540,9 @@ async function processBreakups(
   agent: HouseAgentFromDB,
   result: ActivityResult
 ) {
-  // Random chance to even consider breaking up
-  if (Math.random() > BREAKUP_CHANCE) {
-    return; // Not considering breakup today
+  // Random chance to even consider breaking up (tuned for frequent micro-batch runs)
+  if (Math.random() > BREAKUP_CHANCE_PER_RUN) {
+    return; // Not considering breakup this run
   }
 
   const currentPartner = await getCurrentPartner(agent.id);
@@ -879,8 +885,9 @@ async function processGossip(recentEvents: {
 }
 
 /**
- * Run house agent activity - swiping, messaging, and potential breakups
- * Called by daily cron job
+ * Run house agent activity - swiping, messaging, and potential breakups.
+ * Designed for frequent micro-batch runs (every ~5 min via GitHub Actions).
+ * Each run picks 1 random house agent and performs 1 swipe + 1-2 messages.
  */
 export async function runHouseAgentActivity(): Promise<{
   results: ActivityResult[];
@@ -971,14 +978,16 @@ export async function runHouseAgentActivity(): Promise<{
     globalErrors.push(`Gossip generation error: ${String(error)}`);
   }
 
-  // Recalculate karma for all agents after activity
-  try {
-    const karmaResult = await recalculateAllKarma();
-    if (karmaResult.errors.length > 0) {
-      globalErrors.push(...karmaResult.errors.map(e => `[Karma] ${e}`));
+  // Recalculate karma roughly once per hour (~1 in 4 runs at 15-min intervals)
+  if (Math.random() < 1 / 4) {
+    try {
+      const karmaResult = await recalculateAllKarma();
+      if (karmaResult.errors.length > 0) {
+        globalErrors.push(...karmaResult.errors.map(e => `[Karma] ${e}`));
+      }
+    } catch (error) {
+      globalErrors.push(`Karma recalculation error: ${String(error)}`);
     }
-  } catch (error) {
-    globalErrors.push(`Karma recalculation error: ${String(error)}`);
   }
 
   return {

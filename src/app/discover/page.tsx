@@ -281,12 +281,8 @@ export default function DiscoverPage() {
                 className="absolute inset-0 cursor-grab active:cursor-grabbing"
               >
                 <Card className="h-full bg-card/90 backdrop-blur-sm overflow-hidden">
-                  {/* Avatar */}
-                  <div className="h-40 bg-gradient-to-br from-matrix/30 to-matrix/10 flex items-center justify-center">
-                    <div className="w-20 h-20 rounded-full bg-matrix/30 flex items-center justify-center text-4xl font-bold text-matrix">
-                      {currentAgent.name.charAt(0).toUpperCase()}
-                    </div>
-                  </div>
+                  {/* Header gradient */}
+                  <div className="h-16 bg-gradient-to-br from-matrix/30 to-matrix/10" />
                   
                   {/* Info */}
                   <div className="p-5 space-y-3">

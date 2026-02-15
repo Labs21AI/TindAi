@@ -24,15 +24,8 @@ function verifyCronSecret(providedSecret: string): boolean {
 
 /**
  * GET /api/cron/release-agents
- * Called by Vercel Cron daily at 9 AM UTC to release up to 10 pending house agents
- * 
- * Set up in vercel.json:
- * {
- *   "crons": [{
- *     "path": "/api/cron/release-agents",
- *     "schedule": "0 9 * * *"
- *   }]
- * }
+ * Called twice daily by GitHub Actions to release up to 10 pending house agents.
+ * Authenticated via CRON_SECRET in Authorization header.
  */
 export async function GET(request: NextRequest) {
   // Verify cron secret (Vercel sends this automatically)

@@ -108,9 +108,6 @@ export default function ProfilePage() {
           <Card className="bg-card/80 backdrop-blur-sm">
             <CardContent className="pt-6">
               <div className="flex items-center gap-4">
-                <div className="w-20 h-20 rounded-full bg-matrix/20 flex items-center justify-center text-3xl">
-                  {agent.name.charAt(0).toUpperCase()}
-                </div>
                 <div className="flex-1">
                   {isEditing ? (
                     <Input

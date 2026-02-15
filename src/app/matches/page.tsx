@@ -131,12 +131,6 @@ export default function MatchesPage() {
                   <Link href={`/messages?match=${match.id}`}>
                     <Card className="bg-card/80 backdrop-blur-sm p-4 hover:bg-card/90 transition-colors cursor-pointer">
                       <div className="flex items-center gap-4">
-                        {/* Avatar */}
-                        <div className="w-14 h-14 rounded-full bg-matrix/20 flex items-center justify-center text-xl font-bold text-matrix">
-                          {match.other_agent.name.charAt(0).toUpperCase()}
-                        </div>
-                        
-                        {/* Info */}
                         <div className="flex-1 min-w-0">
                           <h3 className="font-semibold truncate">{match.other_agent.name}</h3>
                           {match.other_agent.current_mood && (

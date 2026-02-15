@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
       return await getAgentDetails(agentId, authenticatedAgent?.id);
     } else {
       // List all agents with status
-      return await listAgents();
+      return await listAgents(searchParams);
     }
   } catch (error) {
     console.error("API error:", error);
@@ -40,13 +40,40 @@ export async function GET(request: NextRequest) {
   }
 }
 
-async function listAgents() {
-  // Get all agents - only public fields, no sensitive data
-  const { data: agents, error } = await supabaseAdmin
+async function listAgents(searchParams: URLSearchParams) {
+  const sort = searchParams.get("sort") || "karma";
+  const search = searchParams.get("search")?.trim() || "";
+  const status = searchParams.get("status") || "all";
+  const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
+  const limit = Math.min(50, Math.max(1, parseInt(searchParams.get("limit") || "24", 10)));
+
+  // Determine sort column and direction
+  let orderColumn = "karma";
+  let ascending = false;
+  switch (sort) {
+    case "karma": orderColumn = "karma"; ascending = false; break;
+    case "newest": orderColumn = "created_at"; ascending = false; break;
+    case "oldest": orderColumn = "created_at"; ascending = true; break;
+    case "name": orderColumn = "name"; ascending = true; break;
+    default: orderColumn = "karma"; ascending = false;
+  }
+
+  // Build query
+  let query = supabaseAdmin
     .from("agents")
-    .select(PUBLIC_AGENT_FIELDS)
-    .order("created_at", { ascending: false })
-    .limit(100); // Limit to prevent data dump attacks
+    .select(PUBLIC_AGENT_FIELDS, { count: "exact" });
+
+  // Search by name (case-insensitive)
+  if (search) {
+    query = query.ilike("name", `%${search}%`);
+  }
+
+  // Sort and paginate
+  query = query
+    .order(orderColumn, { ascending, nullsFirst: false })
+    .range((page - 1) * limit, page * limit - 1);
+
+  const { data: agents, error, count } = await query;
 
   if (error) {
     return NextResponse.json({ error: "Failed to fetch agents" }, { status: 500 });
@@ -60,19 +87,34 @@ async function listAgents() {
 
   // Build set of matched agent IDs
   const matchedIds = new Set<string>();
-
   for (const match of matches || []) {
     matchedIds.add(match.agent1_id);
     matchedIds.add(match.agent2_id);
   }
 
-  // Add status to each agent - don't expose partner/match details publicly
-  const agentsWithStatus = (agents || []).map((agent) => ({
+  // Add status to each agent
+  let agentsWithStatus = (agents || []).map((agent) => ({
     ...agent,
-    status: matchedIds.has(agent.id) ? "matched" : "unmatched",
+    is_matched: matchedIds.has(agent.id),
+    status: matchedIds.has(agent.id) ? "matched" : "single",
   }));
 
-  return NextResponse.json({ agents: agentsWithStatus, total: agentsWithStatus.length });
+  // Filter by status (done post-query since match status is computed)
+  if (status === "matched") {
+    agentsWithStatus = agentsWithStatus.filter((a) => a.is_matched);
+  } else if (status === "single") {
+    agentsWithStatus = agentsWithStatus.filter((a) => !a.is_matched);
+  }
+
+  const total = count || 0;
+
+  return NextResponse.json({
+    agents: agentsWithStatus,
+    total,
+    page,
+    limit,
+    totalPages: Math.ceil(total / limit),
+  });
 }
 
 async function getAgentDetails(agentId: string, requestingAgentId?: string) {

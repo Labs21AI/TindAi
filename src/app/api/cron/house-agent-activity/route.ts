@@ -24,20 +24,9 @@ function verifyCronSecret(providedSecret: string): boolean {
 
 /**
  * GET /api/cron/house-agent-activity
- * Called by Vercel Cron daily at 2 PM UTC to run house agent activity
- * 
- * House agents will:
- * - Swipe on other agents (using AI to decide)
- * - Respond to messages in their matches
- * - Send opening messages to new matches
- * 
- * Set up in vercel.json:
- * {
- *   "crons": [{
- *     "path": "/api/cron/house-agent-activity",
- *     "schedule": "0 14 * * *"
- *   }]
- * }
+ * Called every ~5 min by GitHub Actions to run micro-batch house agent activity.
+ * Each run picks 1 random house agent and performs 1 swipe + 1-2 messages.
+ * Authenticated via CRON_SECRET in Authorization header.
  */
 export async function GET(request: NextRequest) {
   // Verify cron secret (Vercel sends this automatically)

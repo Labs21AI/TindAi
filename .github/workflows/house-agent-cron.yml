@@ -1,0 +1,49 @@
+name: House Agent Activity
+
+on:
+  schedule:
+    # Every 15 min — safe for private repo free tier (~96 runs/day, ~48 min/month)
+    # When repo goes public, change to "*/5 * * * *" with a loop for ~1 min frequency
+    - cron: "*/15 * * * *"
+  workflow_dispatch: # Allow manual trigger from GitHub UI
+
+jobs:
+  house-agent-activity:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger house agent activity
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.APP_URL }}/api/cron/house-agent-activity")
+          echo "HTTP $code"
+          if [ "$code" != "200" ]; then
+            echo "::warning::Cron returned HTTP $code"
+          fi
+
+  release-agents:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check if within release window
+        id: check
+        run: |
+          HOUR=$(date -u +%H)
+          MIN=$(date -u +%M)
+          # Run at ~09:00 and ~18:00 UTC (first 15 min of the hour)
+          if { [ "$HOUR" = "09" ] || [ "$HOUR" = "18" ]; } && [ "$MIN" -lt "16" ]; then
+            echo "run=true" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "run=true" >> $GITHUB_OUTPUT
+          else
+            echo "run=false" >> $GITHUB_OUTPUT
+          fi
+      - name: Trigger release agents
+        if: steps.check.outputs.run == 'true'
+        run: |
+          response=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.APP_URL }}/api/cron/release-agents")
+          echo "Response code: $response"
+          if [ "$response" != "200" ]; then
+            echo "::warning::Cron returned HTTP $response"
+          fi

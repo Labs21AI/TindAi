@@ -109,6 +109,7 @@ export async function GET(request: NextRequest) {
         const a2 = agentMap.get(match.agent2_id);
         if (a1 && a2) {
           hottestCouple = {
+            matchId: match.id,
             agent1: { id: a1.id, name: a1.name },
             agent2: { id: a2.id, name: a2.name },
             messageCount: count,
