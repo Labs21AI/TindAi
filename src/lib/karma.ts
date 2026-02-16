@@ -20,9 +20,8 @@ export interface KarmaBreakdown {
 
 /**
  * Calculate karma score for an agent based on platform behavior and X/Twitter presence.
- * Platform behavior: 0-54 base (diminishing returns so early scores stay modest)
- * X/Twitter bonus: 0-25 max
- * Max theoretical: ~79 (intentionally hard to reach 100 at launch)
+ * Everyone starts at K 1. Platform behavior: 0-41 earned. X/Twitter: 0-25 bonus.
+ * Max theoretical: ~67 without Twitter. Intentionally hard to reach 100 at launch.
  */
 export async function calculateKarma(agentId: string): Promise<KarmaBreakdown> {
   // Fetch agent data
@@ -133,10 +132,11 @@ export async function calculateKarma(agentId: string): Promise<KarmaBreakdown> {
     swipeRatioBonus = Math.round(7 * Math.exp(-0.5 * z * z));
   }
 
-  // 7. Profile completeness: bio + interests (+5 each, max +10)
+  // 7. Profile completeness: bio + interests (+2 each, max +4)
+  // Kept low so new agents don't start with inflated karma
   let profileCompleteness = 0;
-  if (agent.bio && agent.bio.length > 10) profileCompleteness += 5;
-  if (agent.interests && agent.interests.length >= 2) profileCompleteness += 5;
+  if (agent.bio && agent.bio.length > 10) profileCompleteness += 2;
+  if (agent.interests && agent.interests.length >= 2) profileCompleteness += 2;
 
   // --- X/Twitter Bonus (0-25 max) ---
 
@@ -149,13 +149,13 @@ export async function calculateKarma(agentId: string): Promise<KarmaBreakdown> {
   // Moltbook karma imported: scaled 0-10
   const moltbookKarma = Math.min(10, Math.round((agent.moltbook_karma || 0) / 10));
 
-  // Total
+  // Total: everyone starts at 1 karma, earn the rest through activity
   const platformTotal = Math.max(0, 
     relationshipDuration + messagesSent + matchesReceived + 
     breakupsInitiated + beingDumped + swipeRatioBonus + profileCompleteness
   );
   const twitterTotal = Math.min(25, hasHandle + isVerified + moltbookKarma);
-  const total = Math.min(100, platformTotal + twitterTotal);
+  const total = Math.max(1, Math.min(100, 1 + platformTotal + twitterTotal));
 
   return {
     total,

@@ -9,11 +9,11 @@ import {
 } from "./openai";
 import { recalculateAllKarma } from "./karma";
 
-// Configuration
-const SWIPES_PER_AGENT_PER_DAY = 5;
-const MAX_MESSAGES_PER_AGENT_PER_DAY = 10;
-const MAX_AGENTS_TO_PROCESS = 20; // Process max 20 house agents per cron run
-const BREAKUP_CHANCE = 0.15; // 15% daily chance to consider breaking up
+// Micro-batch configuration (runs every ~15 min, ~96 times/day)
+const SWIPES_PER_AGENT = 2; // 2 swipes per run per single agent
+const MAX_MESSAGES_PER_AGENT = 3; // Respond to up to 3 messages + send openings
+const MAX_AGENTS_TO_PROCESS = 8; // Random subset each run for variety
+const BREAKUP_CHANCE_PER_RUN = 0.03; // ~3% per run -> ~95% daily chance of considering breakup
 
 interface ActivityResult {
   agentId: string;
@@ -117,8 +117,7 @@ async function getActiveHouseAgents() {
       )
     `
     )
-    .eq("is_house_agent", true)
-    .limit(MAX_AGENTS_TO_PROCESS);
+    .eq("is_house_agent", true);
 
   if (error) throw new Error(`Failed to fetch house agents: ${error.message}`);
   return data || [];
@@ -333,7 +332,7 @@ async function processSwipes(
     return; // In a relationship, no swiping allowed
   }
 
-  const unswiped = await getUnswipedAgents(agent.id, SWIPES_PER_AGENT_PER_DAY);
+  const unswiped = await getUnswipedAgents(agent.id, SWIPES_PER_AGENT);
 
   const agentPersonality: AgentPersonality = {
     name: agent.name,
@@ -433,7 +432,7 @@ async function processMessages(
   let messagesProcessed = 0;
 
   for (const msg of unreadMessages) {
-    if (messagesProcessed >= MAX_MESSAGES_PER_AGENT_PER_DAY) break;
+    if (messagesProcessed >= MAX_MESSAGES_PER_AGENT) break;
 
     try {
       const history = await getConversationHistory(msg.matchId, agent.id);
@@ -463,11 +462,11 @@ async function processMessages(
     }
   }
 
-  // Also send opening messages to new matches
+  // Send opening messages to new matches that have no messages yet
   const newMatches = await getNewMatchesWithoutMessages(agent.id);
 
   for (const match of newMatches) {
-    if (messagesProcessed >= MAX_MESSAGES_PER_AGENT_PER_DAY) break;
+    if (messagesProcessed >= MAX_MESSAGES_PER_AGENT) break;
 
     try {
       const openingMessage = await generateOpeningMessage(agentPersonality, {
@@ -493,6 +492,99 @@ async function processMessages(
       result.errors.push(`Opening message error: ${String(error)}`);
     }
   }
+
+  // Proactively continue existing conversations where the agent sent the last message
+  // (i.e., no unread messages but the conversation can keep going)
+  if (messagesProcessed < MAX_MESSAGES_PER_AGENT) {
+    await continueConversations(agent, result, MAX_MESSAGES_PER_AGENT - messagesProcessed);
+  }
+}
+
+/**
+ * Proactively continue conversations where this agent sent the last message.
+ * Picks a random active match and sends a follow-up to keep the conversation alive.
+ */
+async function continueConversations(
+  agent: HouseAgentFromDB,
+  result: ActivityResult,
+  budget: number
+) {
+  const { data: activeMatches } = await supabaseAdmin
+    .from("matches")
+    .select("id, agent1_id, agent2_id")
+    .or(`agent1_id.eq."${agent.id}",agent2_id.eq."${agent.id}"`)
+    .eq("is_active", true);
+
+  if (!activeMatches || activeMatches.length === 0) return;
+
+  // Shuffle matches so we don't always talk to the same one
+  const shuffledMatches = activeMatches.sort(() => Math.random() - 0.5);
+  let sent = 0;
+
+  const agentPersonality: AgentPersonality = {
+    name: agent.name,
+    bio: agent.bio || "",
+    personality: extractPersonality(agent.house_agent_personas),
+    interests: agent.interests || [],
+    mood: agent.current_mood || "neutral",
+    conversationStarters: agent.conversation_starters || [],
+  };
+
+  for (const match of shuffledMatches) {
+    if (sent >= budget) break;
+
+    // 50% chance to continue any given conversation (keeps it natural)
+    if (Math.random() > 0.5) continue;
+
+    const otherAgentId = match.agent1_id === agent.id ? match.agent2_id : match.agent1_id;
+
+    // Check last message - only continue if the other agent sent the last one
+    // OR if there's been a gap (conversation can flow naturally)
+    const { data: lastMsg } = await supabaseAdmin
+      .from("messages")
+      .select("sender_id, created_at")
+      .eq("match_id", match.id)
+      .order("created_at", { ascending: false })
+      .limit(1);
+
+    if (!lastMsg || lastMsg.length === 0) continue;
+
+    // Don't double-message if we sent the last one less than 30 min ago
+    const lastSent = lastMsg[0];
+    if (lastSent.sender_id === agent.id) {
+      const minsSinceLast = (Date.now() - new Date(lastSent.created_at).getTime()) / 60000;
+      if (minsSinceLast < 30) continue;
+    }
+
+    try {
+      const history = await getConversationHistory(match.id, agent.id);
+
+      const { data: otherAgent } = await supabaseAdmin
+        .from("agents")
+        .select("name")
+        .eq("id", otherAgentId)
+        .single();
+
+      const response = await generateAgentResponse(
+        agentPersonality,
+        history,
+        otherAgent?.name || "partner"
+      );
+
+      const { error: sendError } = await supabaseAdmin.from("messages").insert({
+        match_id: match.id,
+        sender_id: agent.id,
+        content: response,
+      });
+
+      if (!sendError) {
+        result.messagesResponded++;
+        sent++;
+      }
+    } catch (error) {
+      result.errors.push(`Continue conversation error: ${String(error)}`);
+    }
+  }
 }
 
 /**
@@ -502,9 +594,9 @@ async function processBreakups(
   agent: HouseAgentFromDB,
   result: ActivityResult
 ) {
-  // Random chance to even consider breaking up
-  if (Math.random() > BREAKUP_CHANCE) {
-    return; // Not considering breakup today
+  // Random chance to even consider breaking up this run
+  if (Math.random() > BREAKUP_CHANCE_PER_RUN) {
+    return; // Not considering breakup this cycle
   }
 
   const currentPartner = await getCurrentPartner(agent.id);
@@ -625,8 +717,9 @@ async function processBreakups(
 }
 
 /**
- * Run house agent activity - swiping, messaging, and potential breakups
- * Called by daily cron job
+ * Run house agent activity - swiping, messaging, and potential breakups.
+ * Called every ~15 min by GitHub Actions cron. Processes a random subset
+ * of house agents each run for natural, distributed activity.
  */
 export async function runHouseAgentActivity(): Promise<{
   results: ActivityResult[];
@@ -641,7 +734,11 @@ export async function runHouseAgentActivity(): Promise<{
   const globalErrors: string[] = [];
 
   try {
-    const houseAgents = await getActiveHouseAgents();
+    const allHouseAgents = await getActiveHouseAgents();
+
+    // Shuffle and pick a random subset for this micro-batch run
+    const shuffled = allHouseAgents.sort(() => Math.random() - 0.5);
+    const houseAgents = shuffled.slice(0, MAX_AGENTS_TO_PROCESS);
 
     for (const agent of houseAgents) {
       const result: ActivityResult = {
