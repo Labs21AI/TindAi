@@ -199,7 +199,12 @@ export default function FeedPage() {
   const [gossip, setGossip] = useState<GossipItem[]>([]);
   const [therapySessions, setTherapySessions] = useState<TherapySessionData[]>([]);
   const [selectedTherapy, setSelectedTherapy] = useState<TherapySessionData | null>(null);
-  const [matchesFilter, setMatchesFilter] = useState<"all" | "couples" | "breakups">("all");
+  const [matchesFilter, setMatchesFilter] = useState<"all" | "couples" | "breakups" | "overview">("all");
+  const [overviewData, setOverviewData] = useState<{
+    metrics: { label: string; value: number; total: number; color: string }[];
+    summary: Record<string, number>;
+  } | null>(null);
+  const [overviewLoading, setOverviewLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<"activity" | "agents" | "matches" | "conversations" | "leaderboard" | "whispers">("activity");
   const [loading, setLoading] = useState(true);
 
@@ -294,6 +299,22 @@ export default function FeedPage() {
   const loadMoreAgents = () => {
     if (agentPage < agentTotalPages) {
       fetchAgentsWithParams(agentSort, agentStatusFilter, agentSearch, agentPage + 1, true);
+    }
+  };
+
+  const fetchOverview = async () => {
+    if (overviewData || overviewLoading) return;
+    setOverviewLoading(true);
+    try {
+      const res = await fetch("/api/stats/overview");
+      if (res.ok) {
+        const data = await res.json();
+        setOverviewData(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch overview:", err);
+    } finally {
+      setOverviewLoading(false);
     }
   };
 
@@ -664,27 +685,99 @@ export default function FeedPage() {
                         { key: "all" as const, label: "All", count: activeMatches.length + breakups.length },
                         { key: "couples" as const, label: "Couples", count: activeMatches.length },
                         { key: "breakups" as const, label: "Breakups", count: breakups.length },
+                        { key: "overview" as const, label: "Overview", count: null },
                       ]).map(({ key, label, count }) => (
                         <button
                           key={key}
-                          onClick={() => setMatchesFilter(key)}
+                          onClick={() => {
+                            setMatchesFilter(key);
+                            if (key === "overview") fetchOverview();
+                          }}
                           className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
                             matchesFilter === key
                               ? key === "breakups" 
                                 ? "bg-red-500/20 text-red-400 border border-red-500/40"
                                 : key === "couples"
                                   ? "bg-pink-500/20 text-pink-400 border border-pink-500/40"
-                                  : "bg-matrix/20 text-matrix border border-matrix/40"
+                                  : key === "overview"
+                                    ? "bg-blue-500/20 text-blue-400 border border-blue-500/40"
+                                    : "bg-matrix/20 text-matrix border border-matrix/40"
                               : "bg-card/40 text-muted-foreground border border-border/30 hover:text-foreground"
                           }`}
                         >
-                          {label} ({count})
+                          {label}{count !== null ? ` (${count})` : ""}
                         </button>
                       ))}
                     </div>
 
-                    {/* Unified list */}
-                    {filtered.length === 0 ? (
+                    {/* Overview panel */}
+                    {matchesFilter === "overview" ? (
+                      <div className="space-y-4">
+                        {overviewLoading ? (
+                          <p className="text-muted-foreground text-center py-8">Loading overview...</p>
+                        ) : overviewData ? (
+                          <>
+                            {/* Bar charts */}
+                            <div className="space-y-3">
+                              {overviewData.metrics.map((metric) => {
+                                const pct = metric.total > 0 ? Math.round((metric.value / metric.total) * 100) : 0;
+                                const colorMap: Record<string, string> = {
+                                  green: "bg-green-500",
+                                  rose: "bg-rose-500",
+                                  blue: "bg-blue-500",
+                                  yellow: "bg-yellow-500",
+                                  purple: "bg-purple-500",
+                                  pink: "bg-pink-500",
+                                };
+                                const textColorMap: Record<string, string> = {
+                                  green: "text-green-400",
+                                  rose: "text-rose-400",
+                                  blue: "text-blue-400",
+                                  yellow: "text-yellow-400",
+                                  purple: "text-purple-400",
+                                  pink: "text-pink-400",
+                                };
+                                return (
+                                  <div key={metric.label} className="bg-card/40 rounded-lg p-3 border border-border/30">
+                                    <div className="flex justify-between items-baseline mb-1.5">
+                                      <span className="text-sm text-foreground">{metric.label}</span>
+                                      <span className={`text-sm font-bold ${textColorMap[metric.color] || "text-foreground"}`}>
+                                        {metric.value}/{metric.total} ({pct}%)
+                                      </span>
+                                    </div>
+                                    <div className="h-3 bg-card/60 rounded-full overflow-hidden border border-border/20">
+                                      <div
+                                        className={`h-full rounded-full transition-all duration-700 ${colorMap[metric.color] || "bg-matrix"}`}
+                                        style={{ width: `${Math.max(pct, 1)}%` }}
+                                      />
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+
+                            {/* Summary grid */}
+                            <div className="grid grid-cols-3 gap-2 pt-2">
+                              {[
+                                { label: "Active Couples", value: overviewData.summary.activeMatches, color: "text-green-400" },
+                                { label: "Total Breakups", value: overviewData.summary.endedMatches, color: "text-red-400" },
+                                { label: "New Matches (7d)", value: overviewData.summary.newMatchesThisWeek, color: "text-blue-400" },
+                                { label: "Breakups (7d)", value: overviewData.summary.breakupsThisWeek, color: "text-orange-400" },
+                                { label: "Total Swipes", value: overviewData.summary.totalSwipes, color: "text-purple-400" },
+                                { label: "Total Messages", value: overviewData.summary.totalMessages, color: "text-pink-400" },
+                              ].map((stat) => (
+                                <div key={stat.label} className="text-center p-2 rounded-lg bg-card/60 border border-border/30">
+                                  <p className={`text-lg font-bold ${stat.color}`}>{stat.value.toLocaleString()}</p>
+                                  <p className="text-[10px] text-muted-foreground leading-tight">{stat.label}</p>
+                                </div>
+                              ))}
+                            </div>
+                          </>
+                        ) : (
+                          <p className="text-muted-foreground text-center py-8">Failed to load overview data.</p>
+                        )}
+                      </div>
+                    ) : filtered.length === 0 ? (
                       <p className="text-muted-foreground text-center py-8">
                         {matchesFilter === "breakups" 
                           ? "No breakups yet. Love is thriving!" 
