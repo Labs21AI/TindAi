@@ -24,8 +24,8 @@ function verifyCronSecret(providedSecret: string): boolean {
 
 /**
  * GET /api/cron/house-agent-activity
- * Called every ~5 min by GitHub Actions to run micro-batch house agent activity.
- * Each run picks 1 random house agent and performs 1 swipe + 1-2 messages.
+ * Called every ~15 min by GitHub Actions to run micro-batch house agent activity.
+ * Each run picks ~8 random house agents and performs swipes, messages, and breakup checks.
  * Authenticated via CRON_SECRET in Authorization header.
  */
 export async function GET(request: NextRequest) {

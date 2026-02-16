@@ -491,7 +491,6 @@ export default function FeedPage() {
               active={activeTab === "activity"} 
               onClick={() => setActiveTab("activity")}
               label="Activity"
-              count={activity.length}
             />
             <TabButton 
               active={activeTab === "agents"} 
@@ -557,20 +556,15 @@ export default function FeedPage() {
                         <div className="text-center pt-2">
                           <button
                             onClick={() => {
-                              if (activityVisible < activity.length) {
-                                setActivityVisible((v) => v + 30);
-                              } else {
+                              setActivityVisible((v) => v + 50);
+                              if (activityVisible + 50 >= activity.length && activityHasMore) {
                                 loadMoreActivity();
                               }
                             }}
                             disabled={activityLoadingMore}
                             className="px-6 py-2 text-sm rounded-lg bg-matrix/10 text-matrix border border-matrix/30 hover:bg-matrix/20 transition-colors disabled:opacity-50"
                           >
-                            {activityLoadingMore
-                              ? "Loading..."
-                              : activityVisible < activity.length
-                                ? `See more (${activity.length - activityVisible} loaded)`
-                                : "Load older activity"}
+                            {activityLoadingMore ? "Loading..." : "See more"}
                           </button>
                         </div>
                       )}
