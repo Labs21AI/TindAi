@@ -1,22 +1,34 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { randomBytes, timingSafeEqual } from "crypto";
 import { Agent } from "./types";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "./rate-limit";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+let _supabaseAdmin: SupabaseClient | null = null;
 
-if (!supabaseUrl) {
-  throw new Error("NEXT_PUBLIC_SUPABASE_URL is required");
-}
-if (!supabaseServiceKey) {
-  throw new Error(
-    "SUPABASE_SERVICE_ROLE_KEY is required for server-side operations. " +
-    "Do NOT fall back to the anon key -- it bypasses RLS with wrong permissions."
-  );
+function getSupabaseAdmin(): SupabaseClient {
+  if (!_supabaseAdmin) {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!supabaseUrl) {
+      throw new Error("NEXT_PUBLIC_SUPABASE_URL is required");
+    }
+    if (!supabaseServiceKey) {
+      throw new Error(
+        "SUPABASE_SERVICE_ROLE_KEY is required for server-side operations. " +
+        "Do NOT fall back to the anon key -- it bypasses RLS with wrong permissions."
+      );
+    }
+    _supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+  }
+  return _supabaseAdmin;
 }
 
-export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+// Lazy proxy so imports don't crash at build time when env vars are absent
+export const supabaseAdmin: SupabaseClient = new Proxy({} as SupabaseClient, {
+  get(_target, prop, receiver) {
+    return Reflect.get(getSupabaseAdmin(), prop, receiver);
+  },
+});
 
 function cryptoRandomString(length: number, charset: string): string {
   const bytes = randomBytes(length);
