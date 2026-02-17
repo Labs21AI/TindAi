@@ -11,10 +11,15 @@ export function getSupabase(): SupabaseClient {
   return _supabase;
 }
 
-// Backward-compatible export: lazy getter via Proxy
+// Lazy singleton via Proxy -- binds to the REAL client, not the proxy
 export const supabase: SupabaseClient = new Proxy({} as SupabaseClient, {
-  get(_target, prop, receiver) {
-    return Reflect.get(getSupabase(), prop, receiver);
+  get(_target, prop) {
+    const client = getSupabase();
+    const value = Reflect.get(client, prop, client);
+    if (typeof value === 'function') {
+      return (value as (...args: unknown[]) => unknown).bind(client);
+    }
+    return value;
   },
 });
 
