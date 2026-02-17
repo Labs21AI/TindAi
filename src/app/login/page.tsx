@@ -58,8 +58,9 @@ export default function LoginPage() {
         setStatus("error");
         setErrorMsg(error.message);
       }
+    } else {
+      router.replace("/profile");
     }
-    // If successful, onAuthStateChange in agent context handles redirect
   };
 
   const handleMagicLink = async (e: React.FormEvent) => {
