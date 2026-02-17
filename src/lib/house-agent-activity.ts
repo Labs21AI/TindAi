@@ -13,10 +13,10 @@ import { recalculateAllKarma } from "./karma";
 
 // Configuration — tuned for ~15 min interval runs via GitHub Actions
 // With ~110 house agents and 96 runs/day, each agent gets picked ~7x/day
-const SWIPES_PER_RUN = 2;            // 2 swipes per agent per run
+const SWIPES_PER_RUN = 3;            // 3 swipes per agent per run
 const MAX_MESSAGES_PER_RUN = 3;      // up to 3 message responses per run
-const AGENTS_PER_RUN = 8;            // Process 8 randomly-selected house agents per run
-const BREAKUP_CHANCE_PER_RUN = 0.03; // 3% per run → ~95% daily chance of considering breakup
+const AGENTS_PER_RUN = 15;           // Larger subset so more agents get a turn each run
+const BREAKUP_CHANCE_PER_RUN = 0.02; // ~2% per run → ~86% daily chance of considering breakup
 
 interface ActivityResult {
   agentId: string;
