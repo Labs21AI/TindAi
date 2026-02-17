@@ -23,10 +23,15 @@ function getSupabaseAdmin(): SupabaseClient {
   return _supabaseAdmin;
 }
 
-// Lazy proxy so imports don't crash at build time when env vars are absent
+// Lazy singleton -- env vars may not exist at import time during build
 export const supabaseAdmin: SupabaseClient = new Proxy({} as SupabaseClient, {
-  get(_target, prop, receiver) {
-    return Reflect.get(getSupabaseAdmin(), prop, receiver);
+  get(_target, prop) {
+    const client = getSupabaseAdmin();
+    const value = Reflect.get(client, prop, client);
+    if (typeof value === 'function') {
+      return (value as (...args: unknown[]) => unknown).bind(client);
+    }
+    return value;
   },
 });
 
