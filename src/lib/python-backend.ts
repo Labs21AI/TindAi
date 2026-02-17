@@ -10,6 +10,11 @@ const INTERNAL_SECRET = process.env.INTERNAL_API_SECRET;
 
 function getBaseUrl(): string {
   if (process.env.PYTHON_BACKEND_URL) return process.env.PYTHON_BACKEND_URL;
+  // Prefer production URL over deployment URL to avoid Vercel Standard Protection
+  // VERCEL_PROJECT_PRODUCTION_URL is the production domain (not deployment-specific)
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL)
+    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
+  if (process.env.NEXT_PUBLIC_BASE_URL) return process.env.NEXT_PUBLIC_BASE_URL;
   if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
   return "http://localhost:3000";
 }
@@ -28,6 +33,12 @@ async function callPython<T = Record<string, unknown>>(
 
   if (INTERNAL_SECRET) {
     headers["X-Internal-Secret"] = INTERNAL_SECRET;
+  }
+
+  // Bypass Vercel Standard Protection for internal serverless-to-serverless calls
+  const bypassSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
+  if (bypassSecret) {
+    headers["x-vercel-protection-bypass"] = bypassSecret;
   }
 
   let res: Response;
