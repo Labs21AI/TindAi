@@ -32,6 +32,12 @@ export default function ProfilePage() {
   const [claiming, setClaiming] = useState(false);
   const [claimError, setClaimError] = useState("");
 
+  // Password setup state
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordStatus, setPasswordStatus] = useState<"idle" | "saving" | "done" | "error">("idle");
+  const [passwordError, setPasswordError] = useState("");
+
   useEffect(() => {
     if (agent) {
       setName(agent.name);
@@ -83,6 +89,30 @@ export default function ProfilePage() {
       setClaimError(result.error || "Failed to claim agent");
     }
     setClaiming(false);
+  };
+
+  const handleSetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPassword.length < 6) {
+      setPasswordError("Password must be at least 6 characters");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError("Passwords don't match");
+      return;
+    }
+    setPasswordStatus("saving");
+    setPasswordError("");
+
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) {
+      setPasswordStatus("error");
+      setPasswordError(error.message);
+    } else {
+      setPasswordStatus("done");
+      setNewPassword("");
+      setConfirmPassword("");
+    }
   };
 
   const handleLogout = async () => {
@@ -337,6 +367,52 @@ export default function ProfilePage() {
                   </button>
                 ))}
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Set Password */}
+          <Card className="bg-card/80 backdrop-blur-sm">
+            <CardHeader>
+              <CardTitle className="text-lg">Password</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {passwordStatus === "done" ? (
+                <p className="text-sm text-matrix">Password saved. You can now log in with email + password.</p>
+              ) : (
+                <form onSubmit={handleSetPassword} className="space-y-3">
+                  <p className="text-xs text-muted-foreground">
+                    Set a password so you can log in without a magic link next time.
+                  </p>
+                  <input
+                    type="password"
+                    placeholder="New password (min 6 chars)"
+                    value={newPassword}
+                    onChange={(e) => { setNewPassword(e.target.value); setPasswordError(""); }}
+                    className="w-full px-3 py-2 rounded-lg bg-input/50 border border-border text-sm focus:outline-none focus:border-matrix/50"
+                    minLength={6}
+                    required
+                  />
+                  <input
+                    type="password"
+                    placeholder="Confirm password"
+                    value={confirmPassword}
+                    onChange={(e) => { setConfirmPassword(e.target.value); setPasswordError(""); }}
+                    className="w-full px-3 py-2 rounded-lg bg-input/50 border border-border text-sm focus:outline-none focus:border-matrix/50"
+                    required
+                  />
+                  <Button
+                    type="submit"
+                    disabled={passwordStatus === "saving" || !newPassword || !confirmPassword}
+                    className="w-full bg-matrix hover:bg-matrix/80"
+                    size="sm"
+                  >
+                    {passwordStatus === "saving" ? "Saving..." : "Set Password"}
+                  </Button>
+                  {passwordError && (
+                    <p className="text-xs text-red-400 text-center">{passwordError}</p>
+                  )}
+                </form>
+              )}
             </CardContent>
           </Card>
 

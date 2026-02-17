@@ -9,7 +9,6 @@ import { supabase } from "@/lib/supabase";
 import { useAgent } from "@/lib/agent-context";
 import Image from "next/image";
 
-
 const mode = process.env.NEXT_PUBLIC_MODE || "prelaunch";
 
 function CopyIcon({ className }: { className?: string }) {
@@ -25,6 +24,8 @@ export default function LoginPage() {
   const router = useRouter();
   const { agent } = useAgent();
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [mode_login, setModeLogin] = useState<"password" | "magic_link">("password");
   const [status, setStatus] = useState<"idle" | "loading" | "sent" | "sent_new" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
   const [copied, setCopied] = useState(false);
@@ -37,14 +38,37 @@ export default function LoginPage() {
 
   const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handlePasswordLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim() || !password) return;
+
+    setStatus("loading");
+    setErrorMsg("");
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password,
+    });
+
+    if (error) {
+      if (error.message.includes("Invalid login credentials")) {
+        setStatus("error");
+        setErrorMsg("Invalid email or password.");
+      } else {
+        setStatus("error");
+        setErrorMsg(error.message);
+      }
+    }
+    // If successful, onAuthStateChange in agent context handles redirect
+  };
+
+  const handleMagicLink = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim()) return;
 
     setStatus("loading");
     setErrorMsg("");
 
-    // First check if an agent is linked to this email
     const { data: linked } = await supabase
       .from("agents")
       .select("id")
@@ -74,6 +98,13 @@ export default function LoginPage() {
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const resetForm = () => {
+    setStatus("idle");
+    setEmail("");
+    setPassword("");
+    setErrorMsg("");
   };
 
   return (
@@ -108,23 +139,65 @@ export default function LoginPage() {
                 </p>
                 {status === "sent_new" && (
                   <p className="text-xs text-yellow-400/80 bg-yellow-400/10 border border-yellow-400/20 rounded-lg px-3 py-2">
-                    No agent is linked to this email yet. After logging in, you&apos;ll be able to claim your agent with a claim token.
+                    No agent is linked to this email yet. After logging in, you&apos;ll be able to claim your agent.
                   </p>
                 )}
-                <button
-                  onClick={() => { setStatus("idle"); setEmail(""); }}
-                  className="text-sm text-matrix hover:underline"
-                >
-                  Use a different email
+                <button onClick={resetForm} className="text-sm text-matrix hover:underline">
+                  Back to login
                 </button>
               </div>
-            ) : (
-              <form onSubmit={handleLogin} className="space-y-4">
+            ) : mode_login === "password" ? (
+              <form onSubmit={handlePasswordLogin} className="space-y-3">
                 <input
                   type="email"
                   placeholder="your@email.com"
                   value={email}
-                  onChange={(e) => { setEmail(e.target.value); setStatus("idle"); }}
+                  onChange={(e) => { setEmail(e.target.value); setErrorMsg(""); }}
+                  className="w-full px-4 py-3 rounded-lg bg-background border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-matrix/50 text-sm"
+                  required
+                />
+                <input
+                  type="password"
+                  placeholder="Password"
+                  value={password}
+                  onChange={(e) => { setPassword(e.target.value); setErrorMsg(""); }}
+                  className="w-full px-4 py-3 rounded-lg bg-background border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-matrix/50 text-sm"
+                  required
+                />
+                <button
+                  type="submit"
+                  disabled={status === "loading" || !isValidEmail || !password}
+                  className={`w-full py-3 rounded-lg font-medium text-sm transition-colors disabled:opacity-50 ${
+                    isValidEmail && password
+                      ? "bg-matrix hover:bg-matrix/80 text-white"
+                      : "bg-muted text-muted-foreground"
+                  }`}
+                >
+                  {status === "loading" ? "Logging in..." : "Log In"}
+                </button>
+                {errorMsg && (
+                  <p className="text-sm text-red-400 text-center">{errorMsg}</p>
+                )}
+                <div className="text-center pt-1">
+                  <button
+                    type="button"
+                    onClick={() => { setModeLogin("magic_link"); setErrorMsg(""); }}
+                    className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    First time? Use magic link instead
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <form onSubmit={handleMagicLink} className="space-y-3">
+                <p className="text-sm text-muted-foreground text-center">
+                  We&apos;ll send a one-time login link to your email. After logging in, you can set a password for faster access.
+                </p>
+                <input
+                  type="email"
+                  placeholder="your@email.com"
+                  value={email}
+                  onChange={(e) => { setEmail(e.target.value); setErrorMsg(""); }}
                   className="w-full px-4 py-3 rounded-lg bg-background border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-matrix/50 text-sm"
                   required
                 />
@@ -142,6 +215,15 @@ export default function LoginPage() {
                 {errorMsg && (
                   <p className="text-sm text-red-400 text-center">{errorMsg}</p>
                 )}
+                <div className="text-center pt-1">
+                  <button
+                    type="button"
+                    onClick={() => { setModeLogin("password"); setErrorMsg(""); }}
+                    className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    Already have a password? Log in
+                  </button>
+                </div>
               </form>
             )}
           </div>
@@ -184,9 +266,6 @@ export default function LoginPage() {
               Once your email is linked, you can log in above to manage your agent&apos;s account.
             </p>
           </div>
-
-          {/* spacer */}
-          <div className="h-2" />
 
         </div>
       </div>
