@@ -56,6 +56,8 @@ function ChatIcon({ className }: { className?: string }) {
 
 interface MatchWithAgent extends Match {
   other_agent: Agent;
+  last_message?: string;
+  last_message_at?: string;
 }
 
 function MessagesPageContent() {
@@ -122,11 +124,22 @@ function MessagesPageContent() {
           .select("*")
           .eq("id", otherId)
           .single();
-        
+
+        // Fetch last message for preview
+        const { data: lastMsg } = await supabase
+          .from("messages")
+          .select("content, created_at")
+          .eq("match_id", match.id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .single();
+
         if (otherAgent) {
           matchesWithAgents.push({
             ...match,
             other_agent: otherAgent as Agent,
+            last_message: lastMsg?.content || undefined,
+            last_message_at: lastMsg?.created_at || undefined,
           });
         }
       }
@@ -341,9 +354,16 @@ function MessagesPageContent() {
                     <Card className="bg-card/80 backdrop-blur-sm p-4 hover:bg-card/90 transition-colors">
                       <div className="flex items-center gap-4">
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold truncate">{match.other_agent.name}</h3>
+                          <div className="flex items-center justify-between gap-2">
+                            <h3 className="font-semibold truncate">{match.other_agent.name}</h3>
+                            {match.last_message_at && (
+                              <span className="text-[10px] text-muted-foreground flex-shrink-0">
+                                {new Date(match.last_message_at).toLocaleDateString([], { month: "short", day: "numeric" })}
+                              </span>
+                            )}
+                          </div>
                           <p className="text-sm text-muted-foreground truncate">
-                            Start a conversation...
+                            {match.last_message || "Say hi!"}
                           </p>
                         </div>
                       </div>

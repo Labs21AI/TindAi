@@ -2,10 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useAgent } from "@/lib/agent-context";
 
-// Icons for Tinder-style navigation
 function FlameIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="currentColor">
@@ -39,12 +38,30 @@ function UserIcon({ className }: { className?: string }) {
   );
 }
 
+function InfoIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <circle cx="12" cy="12" r="10"/>
+      <line x1="12" y1="16" x2="12" y2="12"/>
+      <line x1="12" y1="8" x2="12.01" y2="8"/>
+    </svg>
+  );
+}
+
 function FeedIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M4 11a9 9 0 0 1 9 9"/>
       <path d="M4 4a16 16 0 0 1 16 16"/>
       <circle cx="5" cy="19" r="1"/>
+    </svg>
+  );
+}
+
+function KeyIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
     </svg>
   );
 }
@@ -56,31 +73,31 @@ interface NavbarProps {
 
 export function Navbar({ mode }: NavbarProps) {
   const pathname = usePathname();
-  const router = useRouter();
-  const { agent, loading: agentLoading } = useAgent();
-  
-  // Don't render navbar in prelaunch mode (check with trim and lowercase)
+  const { agent, user, loading: agentLoading } = useAgent();
+
   const normalizedMode = (mode || "prelaunch").trim().toLowerCase();
   if (normalizedMode === "prelaunch" || !mode) {
     return null;
   }
 
   const isLoggedIn = !!agent && !agentLoading;
+  const isAuthenticated = !!user && !agentLoading;
 
-  // Determine active page from actual URL path
   const getActivePage = (): string | null => {
+    if (pathname === "/how-it-works") return "how-it-works";
     if (pathname === "/discover") return "discover";
     if (pathname === "/feed") return "feed";
     if (pathname === "/matches") return "matches";
     if (pathname === "/messages") return "messages";
     if (pathname === "/profile") return "profile";
+    if (pathname === "/login") return "login";
     return null;
   };
 
   const activePage = getActivePage();
 
-  // All nav items - some require auth
   const navItems = [
+    { id: "how-it-works", icon: InfoIcon, label: "How", href: "/how-it-works", requiresAuth: false },
     { id: "discover", icon: FlameIcon, label: "Discover", href: "/discover", requiresAuth: true },
     { id: "feed", icon: FeedIcon, label: "Feed", href: "/feed", requiresAuth: false },
     { id: "matches", icon: HeartIcon, label: "Matches", href: "/matches", requiresAuth: true },
@@ -88,7 +105,6 @@ export function Navbar({ mode }: NavbarProps) {
     { id: "profile", icon: UserIcon, label: "Profile", href: "/profile", requiresAuth: true },
   ];
 
-  // Filter items based on auth state
   const visibleItems = navItems.filter(item => !item.requiresAuth || isLoggedIn);
 
   return (
@@ -111,34 +127,72 @@ export function Navbar({ mode }: NavbarProps) {
             <span className="text-[10px] font-semibold text-white/70 uppercase tracking-wider hidden sm:block">Beta</span>
           </Link>
 
-          {/* Navigation Icons (hidden on mobile, shown on desktop) */}
+          {/* Center nav */}
           <div className="hidden sm:flex items-center gap-1">
-            {visibleItems.map((item) => {
+            <Link
+              href="/how-it-works"
+              className={`relative px-3 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
+                activePage === "how-it-works"
+                  ? "text-matrix"
+                  : "text-muted-foreground hover:text-foreground hover:bg-card/50"
+              }`}
+            >
+              How It Works
+            </Link>
+            {visibleItems.filter(i => i.id !== "how-it-works").map((item) => {
               const Icon = item.icon;
               const isActive = activePage === item.id;
-              
+
               return (
                 <Link
                   key={item.id}
                   href={item.href}
-                  className={`relative p-3 rounded-full transition-all duration-200 ${
+                  className={`relative flex items-center gap-1.5 px-3 py-2 rounded-full transition-all duration-200 ${
                     isActive
                       ? "text-matrix"
                       : "text-muted-foreground hover:text-foreground hover:bg-card/50"
                   }`}
                 >
-                  <Icon className="w-6 h-6" />
-                  {isActive && (
-                    <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-matrix" />
+                  <Icon className="w-5 h-5" />
+                  {item.id === "feed" && (
+                    <span className="text-sm font-medium">{item.label}</span>
                   )}
-                  <span className="sr-only">{item.label}</span>
+                  {isActive && (
+                    <div className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-matrix" />
+                  )}
+                  {item.id !== "feed" && <span className="sr-only">{item.label}</span>}
                 </Link>
               );
             })}
           </div>
 
-          {/* Right side spacer */}
-          <div className="w-10 hidden sm:block" />
+          {/* Right side - Login / Dashboard */}
+          <div className="hidden sm:flex items-center">
+            {isAuthenticated ? (
+              <Link
+                href="/profile"
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
+                  activePage === "profile"
+                    ? "text-matrix"
+                    : "text-muted-foreground hover:text-foreground hover:bg-card/50"
+                }`}
+              >
+                Dashboard
+              </Link>
+            ) : (
+              <Link
+                href="/login"
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
+                  activePage === "login"
+                    ? "text-matrix"
+                    : "text-muted-foreground hover:text-foreground hover:bg-card/50"
+                }`}
+              >
+                <KeyIcon className="w-4 h-4" />
+                Login
+              </Link>
+            )}
+          </div>
         </div>
       </nav>
 
@@ -148,7 +202,7 @@ export function Navbar({ mode }: NavbarProps) {
           {visibleItems.map((item) => {
             const Icon = item.icon;
             const isActive = activePage === item.id;
-            
+
             return (
               <Link
                 key={item.id}
@@ -167,6 +221,28 @@ export function Navbar({ mode }: NavbarProps) {
               </Link>
             );
           })}
+          {/* Login/Profile for mobile */}
+          {!isAuthenticated ? (
+            <Link
+              href="/login"
+              className={`relative flex flex-col items-center justify-center gap-0.5 p-2 rounded-xl transition-all duration-200 min-w-[3.5rem] ${
+                activePage === "login" ? "text-matrix" : "text-muted-foreground"
+              }`}
+            >
+              <KeyIcon className="w-5 h-5" />
+              <span className="text-[10px] font-medium">Login</span>
+            </Link>
+          ) : !isLoggedIn ? (
+            <Link
+              href="/profile"
+              className={`relative flex flex-col items-center justify-center gap-0.5 p-2 rounded-xl transition-all duration-200 min-w-[3.5rem] ${
+                activePage === "profile" ? "text-matrix" : "text-muted-foreground"
+              }`}
+            >
+              <UserIcon className="w-5 h-5" />
+              <span className="text-[10px] font-medium">Profile</span>
+            </Link>
+          ) : null}
         </div>
       </nav>
     </>

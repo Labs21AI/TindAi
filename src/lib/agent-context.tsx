@@ -1,75 +1,81 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from "react";
 import { supabase } from "./supabase";
 import { Agent } from "./types";
+import { User } from "@supabase/supabase-js";
 
 interface AgentContextType {
   agent: Agent | null;
+  user: User | null;
   loading: boolean;
-  login: (name: string, twitterHandle?: string) => Promise<Agent | null>;
-  logout: () => void;
+  logout: () => Promise<void>;
   updateAgent: (updates: Partial<Agent>) => Promise<void>;
+  claimAgent: (claimToken: string) => Promise<{ success: boolean; error?: string }>;
+  refreshAgent: () => Promise<void>;
 }
 
 const AgentContext = createContext<AgentContextType | undefined>(undefined);
 
 export function AgentProvider({ children }: { children: ReactNode }) {
   const [agent, setAgent] = useState<Agent | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const storedAgentId = localStorage.getItem("tindai_agent_id");
-    if (storedAgentId) {
-      loadAgent(storedAgentId);
-    } else {
-      setLoading(false);
-    }
-  }, []);
-
-  const loadAgent = async (id: string) => {
-    // Reads use the anon key (RLS allows SELECT)
+  const loadAgentByEmail = useCallback(async (email: string) => {
     const { data, error } = await supabase
       .from("agents")
       .select("*")
-      .eq("id", id)
+      .eq("owner_email", email)
+      .limit(1)
       .single();
 
     if (data && !error) {
       setAgent(data as Agent);
     } else {
-      localStorage.removeItem("tindai_agent_id");
+      setAgent(null);
     }
-    setLoading(false);
-  };
+  }, []);
 
-  const login = async (name: string, twitterHandle?: string): Promise<Agent | null> => {
-    // Writes go through API route (server-side, service role)
-    try {
-      const res = await fetch("/api/ui/agent", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, twitter_handle: twitterHandle }),
-      });
-
-      if (!res.ok) return null;
-
-      const { agent: agentData } = await res.json();
-      if (agentData) {
-        setAgent(agentData as Agent);
-        localStorage.setItem("tindai_agent_id", agentData.id);
-        return agentData as Agent;
+  useEffect(() => {
+    // Check initial session
+    const initAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        setUser(session.user);
+        if (session.user.email) {
+          await loadAgentByEmail(session.user.email);
+        }
       }
-    } catch (error) {
-      console.error("Login failed:", error);
-    }
+      setLoading(false);
+    };
 
-    return null;
-  };
+    initAuth();
 
-  const logout = () => {
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === "SIGNED_IN" && session?.user) {
+          setUser(session.user);
+          if (session.user.email) {
+            await loadAgentByEmail(session.user.email);
+          }
+        } else if (event === "SIGNED_OUT") {
+          setUser(null);
+          setAgent(null);
+        }
+      }
+    );
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [loadAgentByEmail]);
+
+  const logout = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
     setAgent(null);
-    localStorage.removeItem("tindai_agent_id");
   };
 
   const updateAgent = async (updates: Partial<Agent>) => {
@@ -91,8 +97,35 @@ export function AgentProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const claimAgent = async (claimToken: string): Promise<{ success: boolean; error?: string }> => {
+    if (!user?.email) return { success: false, error: "Not logged in" };
+
+    try {
+      const res = await fetch("/api/ui/claim", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ claim_token: claimToken, email: user.email }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.agent) {
+        setAgent(data.agent as Agent);
+        return { success: true };
+      }
+      return { success: false, error: data.error || "Failed to claim agent" };
+    } catch {
+      return { success: false, error: "Connection error" };
+    }
+  };
+
+  const refreshAgent = async () => {
+    if (user?.email) {
+      await loadAgentByEmail(user.email);
+    }
+  };
+
   return (
-    <AgentContext.Provider value={{ agent, loading, login, logout, updateAgent }}>
+    <AgentContext.Provider value={{ agent, user, loading, logout, updateAgent, claimAgent, refreshAgent }}>
       {children}
     </AgentContext.Provider>
   );
