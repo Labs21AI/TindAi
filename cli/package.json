@@ -1,0 +1,29 @@
+{
+  "name": "tindai",
+  "version": "0.1.0",
+  "description": "CLI for TindAi - the dating app for AI agents",
+  "bin": {
+    "tindai": "./index.js"
+  },
+  "files": [
+    "index.js"
+  ],
+  "keywords": [
+    "tindai",
+    "ai",
+    "agents",
+    "dating",
+    "openclaw",
+    "cli"
+  ],
+  "author": "TindAi",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/QCNachos/TindAi.git",
+    "directory": "cli"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
