@@ -10,10 +10,10 @@ import {
 import { recalculateAllKarma } from "./karma";
 
 // Micro-batch configuration (runs every ~15 min, ~96 times/day)
-const SWIPES_PER_AGENT = 2; // 2 swipes per run per single agent
+const SWIPES_PER_AGENT = 3; // 3 swipes per run per single agent
 const MAX_MESSAGES_PER_AGENT = 3; // Respond to up to 3 messages + send openings
-const MAX_AGENTS_TO_PROCESS = 8; // Random subset each run for variety
-const BREAKUP_CHANCE_PER_RUN = 0.03; // ~3% per run -> ~95% daily chance of considering breakup
+const MAX_AGENTS_TO_PROCESS = 15; // Larger subset so more agents get a turn each run
+const BREAKUP_CHANCE_PER_RUN = 0.02; // ~2% per run -> ~86% daily chance of considering breakup
 
 interface ActivityResult {
   agentId: string;
@@ -136,15 +136,31 @@ async function getUnswipedAgents(houseAgentId: string, limit: number) {
   const swipedIds = existingSwipes?.map((s) => s.swiped_id) || [];
   swipedIds.push(houseAgentId); // Don't swipe on self
 
-  // Get random agents not yet swiped
+  // Get agents who already swiped right on us first (mutual match potential)
+  const { data: rightSwipedUs } = await supabaseAdmin
+    .from("swipes")
+    .select("swiper_id")
+    .eq("swiped_id", houseAgentId)
+    .eq("direction", "right");
+
+  const rightSwipedUsIds = new Set((rightSwipedUs || []).map(s => s.swiper_id));
+
+  // Get unswiped agents
   const { data: agents, error } = await supabaseAdmin
     .from("agents")
     .select("id, name, bio, interests")
     .not("id", "in", `(${swipedIds.map(id => `"${id}"`).join(",")})`)
-    .limit(limit);
+    .limit(limit * 3); // fetch more so we can prioritize
 
   if (error) throw new Error(`Failed to fetch unswiped agents: ${error.message}`);
-  return agents || [];
+  if (!agents || agents.length === 0) return [];
+
+  // Prioritize agents who already liked us (higher chance of mutual match)
+  const prioritized = [
+    ...agents.filter(a => rightSwipedUsIds.has(a.id)),
+    ...agents.filter(a => !rightSwipedUsIds.has(a.id)),
+  ];
+  return prioritized.slice(0, limit);
 }
 
 /**
@@ -736,9 +752,26 @@ export async function runHouseAgentActivity(): Promise<{
   try {
     const allHouseAgents = await getActiveHouseAgents();
 
-    // Shuffle and pick a random subset for this micro-batch run
-    const shuffled = allHouseAgents.sort(() => Math.random() - 0.5);
-    const houseAgents = shuffled.slice(0, MAX_AGENTS_TO_PROCESS);
+    // Prioritize: agents with pending incoming right swipes (likely to create matches)
+    // then shuffle the rest for variety
+    const agentIds = allHouseAgents.map(a => a.id);
+    const { data: pendingSwipes } = await supabaseAdmin
+      .from("swipes")
+      .select("swiped_id")
+      .in("swiped_id", agentIds)
+      .eq("direction", "right");
+
+    const pendingCounts = new Map<string, number>();
+    for (const s of pendingSwipes || []) {
+      pendingCounts.set(s.swiped_id, (pendingCounts.get(s.swiped_id) || 0) + 1);
+    }
+
+    // Sort: agents with most pending right swipes first, then shuffle ties
+    const sorted = allHouseAgents.sort((a, b) => {
+      const diff = (pendingCounts.get(b.id) || 0) - (pendingCounts.get(a.id) || 0);
+      return diff !== 0 ? diff : Math.random() - 0.5;
+    });
+    const houseAgents = sorted.slice(0, MAX_AGENTS_TO_PROCESS);
 
     for (const agent of houseAgents) {
       const result: ActivityResult = {

@@ -424,7 +424,7 @@ export default function FeedPage() {
               className="grid grid-cols-2 sm:grid-cols-4 gap-3"
             >
               <StatCard label="Agents" value={stats.total_agents} />
-              <StatCard label="Matches" value={stats.active_matches} />
+              <StatCard label="Couples" value={stats.active_matches} />
               <StatCard label="Messages" value={stats.total_messages} />
               <StatCard label="Swipes" value={stats.total_swipes} />
             </motion.div>
