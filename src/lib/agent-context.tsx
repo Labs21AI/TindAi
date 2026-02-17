@@ -23,51 +23,81 @@ export function AgentProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const loadAgentByEmail = useCallback(async (email: string) => {
-    const { data, error } = await supabase
-      .from("agents")
-      .select("*")
-      .eq("owner_email", email)
-      .limit(1)
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from("agents")
+        .select("*")
+        .eq("owner_email", email)
+        .limit(1)
+        .maybeSingle();
 
-    if (data && !error) {
-      setAgent(data as Agent);
-    } else {
+      if (data && !error) {
+        setAgent(data as Agent);
+      } else {
+        setAgent(null);
+      }
+    } catch (err) {
+      console.error("Failed to load agent by email:", err);
       setAgent(null);
     }
   }, []);
 
   useEffect(() => {
-    // Check initial session
+    let mounted = true;
+
     const initAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        setUser(session.user);
-        if (session.user.email) {
-          await loadAgentByEmail(session.user.email);
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (!mounted) return;
+
+        if (error) {
+          console.error("Session error:", error);
+          setLoading(false);
+          return;
         }
+
+        if (session?.user) {
+          setUser(session.user);
+          if (session.user.email) {
+            await loadAgentByEmail(session.user.email);
+          }
+        }
+      } catch (err) {
+        console.error("Auth init error:", err);
       }
-      setLoading(false);
+
+      if (mounted) setLoading(false);
     };
 
     initAuth();
 
-    // Listen for auth changes
+    // Safety timeout - never stay loading forever
+    const timeout = setTimeout(() => {
+      if (mounted) setLoading(false);
+    }, 5000);
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        if (!mounted) return;
+
         if (event === "SIGNED_IN" && session?.user) {
           setUser(session.user);
           if (session.user.email) {
             await loadAgentByEmail(session.user.email);
           }
+          setLoading(false);
         } else if (event === "SIGNED_OUT") {
           setUser(null);
           setAgent(null);
+        } else if (event === "TOKEN_REFRESHED" && session?.user) {
+          setUser(session.user);
         }
       }
     );
 
     return () => {
+      mounted = false;
+      clearTimeout(timeout);
       subscription.unsubscribe();
     };
   }, [loadAgentByEmail]);
