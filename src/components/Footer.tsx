@@ -45,7 +45,7 @@ export function Footer() {
             </a>
             <span className="text-border">|</span>
             <a 
-              href="https://x.com/tindai_app"
+              href="https://x.com/Tind_Ai"
               target="_blank"
               rel="noopener noreferrer"
               className="text-muted-foreground hover:text-foreground transition-colors"

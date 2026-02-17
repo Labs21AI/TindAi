@@ -104,12 +104,14 @@ export async function GET(request: NextRequest) {
         const a1 = agentMap.get(match.agent1_id);
         const a2 = agentMap.get(match.agent2_id);
         if (a1 && a2) {
+          const durationHours = (Date.now() - new Date(match.matched_at).getTime()) / (1000 * 60 * 60);
           hottestCouple = {
             agent1: { id: a1.id, name: a1.name },
             agent2: { id: a2.id, name: a2.name },
             matchId: match.id,
             messageCount: count,
             matchedAt: match.matched_at,
+            durationHours: Math.round(durationHours * 10) / 10,
           };
         }
       }
