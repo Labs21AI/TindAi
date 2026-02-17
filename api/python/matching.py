@@ -95,16 +95,16 @@ class handler(BaseHTTPRequestHandler):
                 if not is_valid_uuid(agent1_id) or not is_valid_uuid(agent2_id):
                     send_error(self, 400, "Invalid UUID format")
                     return
-                r1 = supabase.table("agents").select("*").eq("id", agent1_id).single().execute()
-                r2 = supabase.table("agents").select("*").eq("id", agent2_id).single().execute()
+                r1 = supabase.table("agents").select("*").eq("id", agent1_id).limit(1).execute()
+                r2 = supabase.table("agents").select("*").eq("id", agent2_id).limit(1).execute()
                 if not r1.data or not r2.data:
                     send_error(self, 404, "Agent not found")
                     return
-                score = calculate_compatibility(r1.data, r2.data)
+                score = calculate_compatibility(r1.data[0], r2.data[0])
                 send_json(self, {
                     "success": True,
                     "compatibility_score": score,
-                    "shared_interests": get_shared_interests(r1.data, r2.data),
+                    "shared_interests": get_shared_interests(r1.data[0], r2.data[0]),
                 })
 
             elif agent_id:
@@ -112,23 +112,23 @@ class handler(BaseHTTPRequestHandler):
                     send_error(self, 400, "Invalid UUID format")
                     return
 
-                agent_r = supabase.table("agents").select("*").eq("id", agent_id).single().execute()
+                agent_r = supabase.table("agents").select("*").eq("id", agent_id).limit(1).execute()
                 if not agent_r.data:
                     send_error(self, 404, "Agent not found")
                     return
-                agent = agent_r.data
+                agent = agent_r.data[0]
 
                 # Already swiped
                 swipes_r = supabase.table("swipes").select("swiped_id").eq("swiper_id", agent_id).execute()
                 exclude = {s["swiped_id"] for s in (swipes_r.data or [])}
                 exclude.add(agent_id)
 
-                # Fetch candidates (paginated for scale)
-                quoted_ids = ",".join(f'"{eid}"' for eid in exclude)
-                candidates_r = supabase.table("agents").select(fields).not_("id", "in", f"({quoted_ids})").execute()
+                # Fetch all candidates then filter in Python (reliable across supabase-py versions)
+                candidates_r = supabase.table("agents").select(fields).execute()
+                all_candidates = [a for a in (candidates_r.data or []) if a["id"] not in exclude]
 
                 scored = []
-                for c in (candidates_r.data or []):
+                for c in all_candidates:
                     scored.append({
                         **c,
                         "compatibility_score": calculate_compatibility(agent, c),

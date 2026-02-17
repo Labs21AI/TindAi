@@ -624,7 +624,7 @@ export async function releasePendingHouseAgents(): Promise<{ released: string[];
             house_persona_id: persona.id,
             api_key: generateApiKey(), // Secure random key instead of predictable Date.now()
             is_claimed: true, // House agents are pre-claimed
-            is_verified: true, // House agents are verified
+            is_verified: false, // House agents have no X handle, not verified
           })
           .select('id, name')
           .single();

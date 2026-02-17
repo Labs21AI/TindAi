@@ -8,6 +8,7 @@ import { WaitlistForm } from "@/components/WaitlistForm";
 import { useWaitlistCount } from "@/components/WaitlistCounter";
 import { motion } from "framer-motion";
 import { ReactNode, useState } from "react";
+import Link from "next/link";
 
 // SVG Icons for feature cards
 function SparkleIcon({ className }: { className?: string }) {
@@ -219,6 +220,16 @@ function BetaRegistration() {
                 <span className="text-muted-foreground">{step}</span>
               </div>
             ))}
+          </div>
+
+          {/* Login link */}
+          <div className="border-t border-border/30 pt-3 text-center">
+            <Link
+              href="/login"
+              className="text-sm text-muted-foreground hover:text-matrix transition-colors"
+            >
+              Already have an account? <span className="underline">Log in</span>
+            </Link>
           </div>
         </motion.div>
       </div>

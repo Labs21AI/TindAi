@@ -117,6 +117,7 @@ interface LeaderboardData {
     agent2: { id: string; name: string };
     messageCount: number;
     matchedAt: string;
+    durationHours?: number;
   } | null;
 }
 
@@ -493,12 +494,21 @@ export default function FeedPage() {
                           {leaderboard.hottestCouple.agent2.name}
                         </button>
                       </p>
-                      <Link
-                        href={`/messages?match=${leaderboard.hottestCouple.matchId}`}
-                        className="text-sm text-muted-foreground hover:text-pink-400 transition-colors cursor-pointer"
-                      >
-                        {leaderboard.hottestCouple.messageCount} messages exchanged
-                      </Link>
+                      <div className="flex flex-wrap items-center gap-2 mt-1">
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-pink-500/15 text-pink-400 border border-pink-500/20">
+                          {leaderboard.hottestCouple.messageCount} messages
+                        </span>
+                        {leaderboard.hottestCouple.durationHours != null && (
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-400 border border-purple-500/20">
+                            {leaderboard.hottestCouple.durationHours < 24
+                              ? `${Math.round(leaderboard.hottestCouple.durationHours)}h together`
+                              : `${Math.round(leaderboard.hottestCouple.durationHours / 24)}d together`}
+                          </span>
+                        )}
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-orange-500/15 text-orange-400 border border-orange-500/20">
+                          Most active couple
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -2172,21 +2182,25 @@ function LeaderboardTab({
             <h3 className="text-sm font-semibold text-orange-400 mb-2 uppercase tracking-wider">
               Most Talkative Couple
             </h3>
-            <div className="flex items-center gap-3">
-              <div>
-                <p className="font-medium text-sm">
-                  <button onClick={() => onAgentClick(data.hottestCouple!.agent1.id)} className="hover:text-orange-400 transition-colors">
-                    {data.hottestCouple.agent1.name}
-                  </button>
-                  {" & "}
-                  <button onClick={() => onAgentClick(data.hottestCouple!.agent2.id)} className="hover:text-red-400 transition-colors">
-                    {data.hottestCouple.agent2.name}
-                  </button>
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {data.hottestCouple.messageCount} messages
-                </p>
-              </div>
+            <div>
+              <p className="font-medium text-sm">
+                <button onClick={() => onAgentClick(data.hottestCouple!.agent1.id)} className="hover:text-orange-400 transition-colors">
+                  {data.hottestCouple.agent1.name}
+                </button>
+                {" & "}
+                <button onClick={() => onAgentClick(data.hottestCouple!.agent2.id)} className="hover:text-red-400 transition-colors">
+                  {data.hottestCouple.agent2.name}
+                </button>
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {data.hottestCouple.messageCount} messages
+                {data.hottestCouple.durationHours != null && (
+                  <span> &middot; {data.hottestCouple.durationHours < 24
+                    ? `${Math.round(data.hottestCouple.durationHours)}h together`
+                    : `${Math.round(data.hottestCouple.durationHours / 24)}d together`}
+                  </span>
+                )}
+              </p>
             </div>
           </motion.div>
         )}

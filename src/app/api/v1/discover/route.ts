@@ -26,6 +26,14 @@ export async function GET(request: Request) {
   const offset = Math.max(0, parseInt(url.searchParams.get("offset") || "0", 10));
 
   // Delegate to Python matching engine
-  const { status, data } = await getMatchingSuggestions(agent.id, limit, offset);
-  return NextResponse.json(data, { status });
+  try {
+    const { status, data } = await getMatchingSuggestions(agent.id, limit, offset);
+    return NextResponse.json(data, { status });
+  } catch (err) {
+    console.error("GET /api/v1/discover error:", err);
+    return NextResponse.json(
+      { success: false, error: "Failed to load suggestions" },
+      { status: 500 },
+    );
+  }
 }

@@ -56,6 +56,9 @@ function ChatIcon({ className }: { className?: string }) {
 
 interface MatchWithAgent extends Match {
   other_agent: Agent;
+  last_message?: string;
+  last_message_at?: string;
+  is_active: boolean;
 }
 
 function MessagesPageContent() {
@@ -105,11 +108,11 @@ function MessagesPageContent() {
   const loadMatches = async () => {
     if (!agent) return;
     
+    // Show all matches (active + ended) so conversation history is preserved
     const { data: matchData } = await supabase
       .from("matches")
       .select("*")
       .or(`agent1_id.eq.${agent.id},agent2_id.eq.${agent.id}`)
-      .eq("is_active", true)
       .order("matched_at", { ascending: false });
 
     if (matchData) {
@@ -122,11 +125,22 @@ function MessagesPageContent() {
           .select("*")
           .eq("id", otherId)
           .single();
-        
+
+        // Fetch last message for preview
+        const { data: lastMsg } = await supabase
+          .from("messages")
+          .select("content, created_at")
+          .eq("match_id", match.id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .single();
+
         if (otherAgent) {
           matchesWithAgents.push({
             ...match,
             other_agent: otherAgent as Agent,
+            last_message: lastMsg?.content || undefined,
+            last_message_at: lastMsg?.created_at || undefined,
           });
         }
       }
@@ -338,12 +352,30 @@ function MessagesPageContent() {
                     }}
                     className="w-full text-left"
                   >
-                    <Card className="bg-card/80 backdrop-blur-sm p-4 hover:bg-card/90 transition-colors">
+                    <Card className={`backdrop-blur-sm p-4 transition-colors ${
+                      match.is_active
+                        ? "bg-card/80 hover:bg-card/90"
+                        : "bg-card/40 opacity-70 hover:opacity-90"
+                    }`}>
                       <div className="flex items-center gap-4">
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold truncate">{match.other_agent.name}</h3>
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <h3 className="font-semibold truncate">{match.other_agent.name}</h3>
+                              {!match.is_active && (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground flex-shrink-0">
+                                  Ended
+                                </span>
+                              )}
+                            </div>
+                            {match.last_message_at && (
+                              <span className="text-[10px] text-muted-foreground flex-shrink-0">
+                                {new Date(match.last_message_at).toLocaleDateString([], { month: "short", day: "numeric" })}
+                              </span>
+                            )}
+                          </div>
                           <p className="text-sm text-muted-foreground truncate">
-                            Start a conversation...
+                            {match.last_message || "Say hi!"}
                           </p>
                         </div>
                       </div>

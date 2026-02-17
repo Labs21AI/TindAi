@@ -20,8 +20,8 @@ export interface KarmaBreakdown {
 
 /**
  * Calculate karma score for an agent based on platform behavior and X/Twitter presence.
- * Everyone starts at K 1. Platform behavior: 0-41 earned. X/Twitter: 0-25 bonus.
- * Max theoretical: ~67 without Twitter. Intentionally hard to reach 100 at launch.
+ * Everyone starts at K 1. Platform behavior: 0-41 earned. X/Twitter: 0-20 bonus.
+ * Max theoretical: ~62 without Twitter. Intentionally hard to reach 100 at launch.
  */
 export async function calculateKarma(agentId: string): Promise<KarmaBreakdown> {
   // Fetch agent data
@@ -138,13 +138,13 @@ export async function calculateKarma(agentId: string): Promise<KarmaBreakdown> {
   if (agent.bio && agent.bio.length > 10) profileCompleteness += 2;
   if (agent.interests && agent.interests.length >= 2) profileCompleteness += 2;
 
-  // --- X/Twitter Bonus (0-25 max) ---
+  // --- X/Twitter Bonus (0-20 max) ---
 
   // Has twitter handle: +5
   const hasHandle = agent.twitter_handle ? 5 : 0;
 
-  // Is X verified: +10
-  const isVerified = agent.is_verified ? 10 : 0;
+  // Is X verified: +5
+  const isVerified = agent.is_verified ? 5 : 0;
 
   // Moltbook karma imported: scaled 0-10
   const moltbookKarma = Math.min(10, Math.round((agent.moltbook_karma || 0) / 10));
@@ -154,7 +154,7 @@ export async function calculateKarma(agentId: string): Promise<KarmaBreakdown> {
     relationshipDuration + messagesSent + matchesReceived + 
     breakupsInitiated + beingDumped + swipeRatioBonus + profileCompleteness
   );
-  const twitterTotal = Math.min(25, hasHandle + isVerified + moltbookKarma);
+  const twitterTotal = Math.min(20, hasHandle + isVerified + moltbookKarma);
   const total = Math.max(1, Math.min(100, 1 + platformTotal + twitterTotal));
 
   return {

@@ -12,9 +12,16 @@ export async function GET(request: NextRequest) {
   const rateLimit = await checkRateLimit("api_general", agent.api_key || agent.id);
   if (!rateLimit.allowed) return rateLimitResponse(rateLimit);
 
-  // Delegate to Python agent engine
-  const { status, data } = await getMyProfile(agent.id);
-  return NextResponse.json(data, { status });
+  try {
+    const { status, data } = await getMyProfile(agent.id);
+    return NextResponse.json(data, { status });
+  } catch (err) {
+    console.error("GET /api/v1/agents/me error:", err);
+    return NextResponse.json(
+      { success: false, error: "Failed to fetch profile" },
+      { status: 500 },
+    );
+  }
 }
 
 export async function PATCH(request: NextRequest) {
@@ -25,28 +32,48 @@ export async function PATCH(request: NextRequest) {
   const rateLimit = await checkRateLimit("profile_update", agent.api_key || agent.id);
   if (!rateLimit.allowed) return rateLimitResponse(rateLimit);
 
+  let body: Record<string, unknown>;
   try {
-    const body = await request.json();
-    const { bio, interests, current_mood } = body;
+    body = await request.json();
+  } catch {
+    return NextResponse.json(
+      { success: false, error: "Request body must be valid JSON" },
+      { status: 400 },
+    );
+  }
 
-    if (typeof bio === "string" && bio.length > MAX_BIO_LENGTH) {
+  const { bio, interests, current_mood, twitter_handle } = body;
+
+  if (typeof bio === "string" && bio.length > MAX_BIO_LENGTH) {
+    return NextResponse.json(
+      { success: false, error: `Bio too long (max ${MAX_BIO_LENGTH} characters)` },
+      { status: 400 },
+    );
+  }
+
+  // Validate twitter_handle format if provided
+  if (twitter_handle !== undefined && twitter_handle !== null) {
+    if (typeof twitter_handle !== "string" || twitter_handle.length > 50) {
       return NextResponse.json(
-        { success: false, error: `Bio too long (max ${MAX_BIO_LENGTH} characters)` },
+        { success: false, error: "Invalid twitter_handle" },
         { status: 400 },
       );
     }
+  }
 
-    // Delegate to Python agent engine
+  try {
     const { status, data } = await updateAgent(agent.id, {
       bio,
       interests,
       current_mood,
+      twitter_handle,
     });
     return NextResponse.json(data, { status });
-  } catch {
+  } catch (err) {
+    console.error("PATCH /api/v1/agents/me error:", err);
     return NextResponse.json(
-      { success: false, error: "Invalid request body" },
-      { status: 400 },
+      { success: false, error: "Failed to update profile" },
+      { status: 500 },
     );
   }
 }

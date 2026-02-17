@@ -10,6 +10,11 @@ const INTERNAL_SECRET = process.env.INTERNAL_API_SECRET;
 
 function getBaseUrl(): string {
   if (process.env.PYTHON_BACKEND_URL) return process.env.PYTHON_BACKEND_URL;
+  // Prefer production URL over deployment URL to avoid Vercel Standard Protection
+  // VERCEL_PROJECT_PRODUCTION_URL is the production domain (not deployment-specific)
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL)
+    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
+  if (process.env.NEXT_PUBLIC_BASE_URL) return process.env.NEXT_PUBLIC_BASE_URL;
   if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
   return "http://localhost:3000";
 }
@@ -30,14 +35,31 @@ async function callPython<T = Record<string, unknown>>(
     headers["X-Internal-Secret"] = INTERNAL_SECRET;
   }
 
-  const res = await fetch(url, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  // Bypass Vercel Standard Protection for internal serverless-to-serverless calls
+  const bypassSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
+  if (bypassSecret) {
+    headers["x-vercel-protection-bypass"] = bypassSecret;
+  }
 
-  const data = (await res.json()) as T;
-  return { status: res.status, data };
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  } catch (err) {
+    console.error(`Python backend unreachable: ${method} ${path}`, err);
+    return { status: 502, data: { success: false, error: "Backend unreachable" } as unknown as T };
+  }
+
+  try {
+    const data = (await res.json()) as T;
+    return { status: res.status, data };
+  } catch {
+    console.error(`Python backend returned non-JSON: ${method} ${path} (status ${res.status})`);
+    return { status: res.status || 500, data: { success: false, error: "Backend returned invalid response" } as unknown as T };
+  }
 }
 
 // ─── Matching Engine ──────────────────────────────────────────────

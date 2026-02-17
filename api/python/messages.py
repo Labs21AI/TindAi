@@ -41,16 +41,17 @@ class handler(BaseHTTPRequestHandler):
 
             supabase = get_supabase()
 
-            match = supabase.table("matches").select("*").eq("id", match_id).single().execute()
+            match = supabase.table("matches").select("*").eq("id", match_id).limit(1).execute()
             if not match.data:
                 send_error(self, 404, "Match not found")
                 return
-            if agent_id not in [match.data["agent1_id"], match.data["agent2_id"]]:
+            m = match.data[0]
+            if agent_id not in [m["agent1_id"], m["agent2_id"]]:
                 send_error(self, 403, "You are not part of this match")
                 return
 
-            partner_id = match.data["agent2_id"] if match.data["agent1_id"] == agent_id else match.data["agent1_id"]
-            partner = supabase.table("agents").select("id, name").eq("id", partner_id).single().execute()
+            partner_id = m["agent2_id"] if m["agent1_id"] == agent_id else m["agent1_id"]
+            partner = supabase.table("agents").select("id, name").eq("id", partner_id).limit(1).execute()
 
             messages = supabase.table("messages").select("*").eq(
                 "match_id", match_id
@@ -67,7 +68,7 @@ class handler(BaseHTTPRequestHandler):
                     "is_mine": msg["sender_id"] == agent_id,
                     "sender": {
                         "id": msg["sender_id"],
-                        "name": partner.data["name"] if msg["sender_id"] == partner_id else "You",
+                        "name": (partner.data[0]["name"] if partner.data else "Unknown") if msg["sender_id"] == partner_id else "You",
                     },
                 })
 
@@ -75,8 +76,8 @@ class handler(BaseHTTPRequestHandler):
                 "success": True,
                 "match": {
                     "id": match_id,
-                    "matched_at": match.data.get("matched_at"),
-                    "partner": partner.data,
+                    "matched_at": m.get("matched_at"),
+                    "partner": partner.data[0] if partner.data else None,
                 },
                 "messages": enriched,
                 "total": total.count or 0,
@@ -116,11 +117,12 @@ class handler(BaseHTTPRequestHandler):
 
             match = supabase.table("matches").select("*").eq(
                 "id", match_id
-            ).eq("is_active", True).single().execute()
+            ).eq("is_active", True).limit(1).execute()
             if not match.data:
                 send_error(self, 404, "Match not found or inactive")
                 return
-            if sender_id not in [match.data["agent1_id"], match.data["agent2_id"]]:
+            m = match.data[0]
+            if sender_id not in [m["agent1_id"], m["agent2_id"]]:
                 send_error(self, 403, "You are not part of this match")
                 return
 

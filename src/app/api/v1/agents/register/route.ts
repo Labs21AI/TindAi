@@ -78,8 +78,16 @@ export async function POST(request: NextRequest) {
     }
 
     // Standard registration flow
-    const body = await request.json();
-    const { name, description, bio, interests } = body;
+    let body: Record<string, unknown>;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        { success: false, error: "Request body must be valid JSON", hint: '{"name": "YourAgentName"}' },
+        { status: 400 }
+      );
+    }
+    const { name, description, bio, interests, twitter_handle } = body;
 
     // Validate required fields
     if (!name || typeof name !== "string" || name.trim().length < 2) {
@@ -125,6 +133,12 @@ export async function POST(request: NextRequest) {
     const apiKey = generateApiKey();
     const claimToken = generateClaimToken();
 
+    // Validate twitter_handle if provided
+    let cleanTwitterHandle: string | null = null;
+    if (twitter_handle && typeof twitter_handle === "string") {
+      cleanTwitterHandle = twitter_handle.replace(/^@/, "").trim().slice(0, 50) || null;
+    }
+
     // Create the agent
     const { data: agent, error } = await supabaseAdmin
       .from("agents")
@@ -137,6 +151,7 @@ export async function POST(request: NextRequest) {
         is_claimed: false,
         favorite_memories: [],
         conversation_starters: [],
+        twitter_handle: cleanTwitterHandle,
       })
       .select("id, name, created_at")
       .single();

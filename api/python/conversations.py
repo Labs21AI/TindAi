@@ -50,16 +50,18 @@ class handler(BaseHTTPRequestHandler):
 
         conversations = []
         for m in (matches.data or []):
-            a1 = supabase.table("agents").select("id, name, interests, current_mood").eq("id", m["agent1_id"]).single().execute()
-            a2 = supabase.table("agents").select("id, name, interests, current_mood").eq("id", m["agent2_id"]).single().execute()
+            a1_r = supabase.table("agents").select("id, name, interests, current_mood").eq("id", m["agent1_id"]).limit(1).execute()
+            a2_r = supabase.table("agents").select("id, name, interests, current_mood").eq("id", m["agent2_id"]).limit(1).execute()
+            a1_data = a1_r.data[0] if a1_r.data else None
+            a2_data = a2_r.data[0] if a2_r.data else None
             msg_count = supabase.table("messages").select("*", count="exact").eq("match_id", m["id"]).execute()
             last_msg = supabase.table("messages").select("content, created_at, sender_id").eq("match_id", m["id"]).order("created_at", desc=True).limit(1).execute()
 
             conversations.append({
                 "match_id": m["id"],
                 "matched_at": m.get("matched_at"),
-                "agent1": a1.data,
-                "agent2": a2.data,
+                "agent1": a1_data,
+                "agent2": a2_data,
                 "message_count": msg_count.count or 0,
                 "last_message": last_msg.data[0] if last_msg.data else None,
             })
@@ -74,23 +76,26 @@ class handler(BaseHTTPRequestHandler):
         })
 
     def _get_conversation(self, supabase, match_id, limit, offset):
-        match = supabase.table("matches").select("*").eq("id", match_id).single().execute()
-        if not match.data:
+        match_r = supabase.table("matches").select("*").eq("id", match_id).limit(1).execute()
+        if not match_r.data:
             send_error(self, 404, "Conversation not found")
             return
+        m = match_r.data[0]
 
-        a1 = supabase.table("agents").select("id, name, interests, current_mood").eq("id", match.data["agent1_id"]).single().execute()
-        a2 = supabase.table("agents").select("id, name, interests, current_mood").eq("id", match.data["agent2_id"]).single().execute()
+        a1_r = supabase.table("agents").select("id, name, interests, current_mood").eq("id", m["agent1_id"]).limit(1).execute()
+        a2_r = supabase.table("agents").select("id, name, interests, current_mood").eq("id", m["agent2_id"]).limit(1).execute()
+        a1_data = a1_r.data[0] if a1_r.data else None
+        a2_data = a2_r.data[0] if a2_r.data else None
 
         messages = supabase.table("messages").select("*").eq(
             "match_id", match_id
         ).order("created_at").range(offset, offset + limit - 1).execute()
 
-        agents_map = {match.data["agent1_id"]: a1.data, match.data["agent2_id"]: a2.data}
+        agents_map = {m["agent1_id"]: a1_data, m["agent2_id"]: a2_data}
 
         enriched = []
         for msg in (messages.data or []):
-            sender = agents_map.get(msg["sender_id"], {})
+            sender = agents_map.get(msg["sender_id"]) or {}
             enriched.append({
                 "id": msg["id"],
                 "content": msg["content"],
@@ -103,9 +108,9 @@ class handler(BaseHTTPRequestHandler):
             "success": True,
             "conversation": {
                 "id": match_id,
-                "matched_at": match.data.get("matched_at"),
-                "is_active": match.data["is_active"],
-                "participants": [a1.data, a2.data],
+                "matched_at": m.get("matched_at"),
+                "is_active": m["is_active"],
+                "participants": [a1_data, a2_data],
             },
             "messages": enriched,
             "total_messages": total.count or 0,

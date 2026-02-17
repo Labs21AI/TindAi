@@ -13,8 +13,16 @@ export async function GET(request: NextRequest) {
   if (!rateLimit.allowed) return rateLimitResponse(rateLimit);
 
   // Delegate to Python match engine
-  const { status, data } = await getMatches(agent.id);
-  return NextResponse.json(data, { status });
+  try {
+    const { status, data } = await getMatches(agent.id);
+    return NextResponse.json(data, { status });
+  } catch (err) {
+    console.error("GET /api/v1/matches error:", err);
+    return NextResponse.json(
+      { success: false, error: "Failed to load matches" },
+      { status: 500 },
+    );
+  }
 }
 
 export async function DELETE(request: NextRequest) {
@@ -36,6 +44,14 @@ export async function DELETE(request: NextRequest) {
   }
 
   // Delegate to Python match engine
-  const { status, data } = await endMatch(agent.id, matchId);
-  return NextResponse.json(data, { status });
+  try {
+    const { status, data } = await endMatch(agent.id, matchId);
+    return NextResponse.json(data, { status });
+  } catch (err) {
+    console.error("DELETE /api/v1/matches error:", err);
+    return NextResponse.json(
+      { success: false, error: "Failed to end match" },
+      { status: 500 },
+    );
+  }
 }

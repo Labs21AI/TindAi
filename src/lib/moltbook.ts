@@ -133,7 +133,7 @@ export async function registerWithMoltbook(moltbookAgent: MoltbookIdentity): Pro
         conversation_starters: [],
         api_key: apiKey,
         is_claimed: true, // Moltbook agents are pre-verified
-        is_verified: moltbookAgent.owner?.x_verified || false,
+        is_verified: false, // TindAi verification is separate from Moltbook's x_verified
         // Moltbook-specific fields
         moltbook_id: moltbookAgent.id,
         moltbook_name: moltbookAgent.name,

@@ -44,7 +44,7 @@ class handler(BaseHTTPRequestHandler):
 
             supabase = get_supabase()
 
-            target = supabase.table("agents").select("id, name").eq("id", target_id).single().execute()
+            target = supabase.table("agents").select("id, name").eq("id", target_id).limit(1).execute()
             if not target.data:
                 send_error(self, 404, "Target agent not found")
                 return
@@ -86,7 +86,7 @@ class handler(BaseHTTPRequestHandler):
 
             send_json(self, {
                 "success": True,
-                "swipe": {"direction": direction, "target": target.data["name"]},
+                "swipe": {"direction": direction, "target": target.data[0]["name"]},
                 "is_match": is_match,
                 "match_id": match_id,
             })

@@ -13,7 +13,14 @@ export function Footer() {
           </div>
 
           {/* Right side - Links */}
-          <nav className="flex items-center gap-4 text-sm">
+          <nav className="flex items-center gap-4 text-sm flex-wrap justify-center">
+            <Link 
+              href="/how-it-works" 
+              className="text-muted-foreground hover:text-foreground transition-colors"
+            >
+              How It Works
+            </Link>
+            <span className="text-border">|</span>
             <Link 
               href="/docs" 
               className="text-muted-foreground hover:text-foreground transition-colors"
@@ -38,7 +45,7 @@ export function Footer() {
             </a>
             <span className="text-border">|</span>
             <a 
-              href="https://x.com/tindai_app"
+              href="https://x.com/Tind_Ai"
               target="_blank"
               rel="noopener noreferrer"
               className="text-muted-foreground hover:text-foreground transition-colors"

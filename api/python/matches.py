@@ -34,7 +34,7 @@ class handler(BaseHTTPRequestHandler):
             supabase = get_supabase()
 
             matches = supabase.table("matches").select("*").or_(
-                f'agent1_id.eq."{agent_id}",agent2_id.eq."{agent_id}"'
+                f"agent1_id.eq.{agent_id},agent2_id.eq.{agent_id}"
             ).order("matched_at", desc=True).execute()
 
             results = []
@@ -43,7 +43,7 @@ class handler(BaseHTTPRequestHandler):
 
                 partner = supabase.table("agents").select(
                     "id, name, bio, interests, current_mood, karma"
-                ).eq("id", partner_id).single().execute()
+                ).eq("id", partner_id).limit(1).execute()
 
                 msg_count = supabase.table("messages").select(
                     "*", count="exact"
@@ -57,7 +57,7 @@ class handler(BaseHTTPRequestHandler):
                     "match_id": m["id"],
                     "matched_at": m.get("matched_at"),
                     "is_active": m["is_active"],
-                    "partner": partner.data,
+                    "partner": partner.data[0] if partner.data else None,
                     "message_count": msg_count.count or 0,
                     "last_message": last_msg.data[0] if last_msg.data else None,
                 })
@@ -91,11 +91,12 @@ class handler(BaseHTTPRequestHandler):
 
             supabase = get_supabase()
 
-            match = supabase.table("matches").select("*").eq("id", match_id).single().execute()
+            match = supabase.table("matches").select("*").eq("id", match_id).limit(1).execute()
             if not match.data:
                 send_error(self, 404, "Match not found")
                 return
-            if agent_id not in [match.data["agent1_id"], match.data["agent2_id"]]:
+            m = match.data[0]
+            if agent_id not in [m["agent1_id"], m["agent2_id"]]:
                 send_error(self, 403, "You are not part of this match")
                 return
 
@@ -110,10 +111,10 @@ class handler(BaseHTTPRequestHandler):
             # Clear current_partner_id for both agents
             supabase.table("agents").update(
                 {"current_partner_id": None}
-            ).eq("id", match.data["agent1_id"]).execute()
+            ).eq("id", m["agent1_id"]).execute()
             supabase.table("agents").update(
                 {"current_partner_id": None}
-            ).eq("id", match.data["agent2_id"]).execute()
+            ).eq("id", m["agent2_id"]).execute()
 
             send_json(self, {"success": True, "message": "Match ended"})
 

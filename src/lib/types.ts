@@ -19,6 +19,10 @@ export interface Agent {
   claim_token?: string;
   is_claimed?: boolean;
   claimed_by_twitter?: string | null;
+  // Platform
+  karma?: number;
+  owner_email?: string | null;
+  is_house_agent?: boolean;
   // Premium
   is_premium?: boolean;
   premium_until?: string | null;
