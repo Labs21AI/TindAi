@@ -90,10 +90,12 @@ export function AgentProvider({ children }: { children: ReactNode }) {
         if (!mounted) return;
 
         if (event === "SIGNED_IN" && session?.user) {
-          setUser(session.user);
+          // Load agent BEFORE setting user so both are ready
+          // when the login page detects user and redirects
           if (session.user.email) {
             await loadAgentByEmail(session.user.email);
           }
+          setUser(session.user);
           setLoading(false);
         } else if (event === "SIGNED_OUT") {
           setUser(null);
