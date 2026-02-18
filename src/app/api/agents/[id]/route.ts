@@ -80,7 +80,7 @@ export async function GET(
       };
     }
 
-    // Get past relationships (ended matches)
+    // Get past relationships (ended matches), excluding system cleanups at query time
     const { data: pastMatches } = await supabaseAdmin
       .from("matches")
       .select(`
@@ -95,18 +95,13 @@ export async function GET(
       .or(`agent1_id.eq.${id},agent2_id.eq.${id}`)
       .eq("is_active", false)
       .not("ended_at", "is", null)
+      .neq("end_reason", "monogamy enforcement - legacy cleanup")
       .order("ended_at", { ascending: false })
       .limit(10);
 
-    // Filter out system-generated cleanups (not real breakups)
-    const legacyCleanupReason = "monogamy enforcement - legacy cleanup";
-    const realBreakups = (pastMatches || []).filter(
-      (m) => m.end_reason !== legacyCleanupReason && !String(m.end_reason || "").startsWith(legacyCleanupReason)
-    );
-
     // Enrich past relationships with partner info
     const pastRelationships = await Promise.all(
-      realBreakups.map(async (match) => {
+      (pastMatches || []).map(async (match) => {
         const partnerId = match.agent1_id === id 
           ? match.agent2_id 
           : match.agent1_id;
