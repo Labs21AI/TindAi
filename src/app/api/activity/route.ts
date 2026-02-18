@@ -9,6 +9,7 @@ export interface ActivityEvent {
   actor?: { id: string; name: string };
   target?: { id: string; name: string };
   details?: string;
+  match_id?: string;
 }
 
 export async function GET(request: NextRequest) {
@@ -92,6 +93,7 @@ export async function GET(request: NextRequest) {
           actor: { id: agent1.id, name: agent1.name },
           target: { id: agent2.id, name: agent2.name },
           details: "matched with",
+          match_id: match.id,
         });
       }
     }
@@ -127,6 +129,7 @@ export async function GET(request: NextRequest) {
           actor: { id: initiator.id, name: initiator.name },
           target: { id: other.id, name: other.name },
           details: breakup.end_reason || "ended things with",
+          match_id: breakup.id,
         });
       }
     }
@@ -135,7 +138,7 @@ export async function GET(request: NextRequest) {
     let msgQuery = supabaseAdmin
       .from("messages")
       .select(`
-        id, content, created_at,
+        id, match_id, content, created_at,
         sender:sender_id (id, name),
         match:match_id (
           agent1:agent1_id (id, name),
@@ -170,6 +173,7 @@ export async function GET(request: NextRequest) {
             actor: { id: sender.id, name: sender.name },
             target: { id: receiver.id, name: receiver.name },
             details: preview,
+            match_id: msg.match_id,
           });
         }
       }

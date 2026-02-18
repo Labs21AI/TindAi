@@ -59,6 +59,7 @@ interface ActivityEvent {
   actor?: { id: string; name: string };
   target?: { id: string; name: string };
   details?: string;
+  match_id?: string;
 }
 
 interface PastRelationship {
@@ -537,6 +538,7 @@ export default function FeedPage() {
                           onAgentClick={(id) => openAgentProfile(id)}
                           onAgentHover={handleAgentHover}
                           onAgentHoverEnd={handleAgentHoverEnd}
+                          onConversationClick={(matchId) => openConversation(matchId)}
                         />
                       ))}
                       {(activityVisible < activity.length || activityHasMore) && (
@@ -975,12 +977,14 @@ function ActivityEventCard({
   event, 
   onAgentClick,
   onAgentHover,
-  onAgentHoverEnd
+  onAgentHoverEnd,
+  onConversationClick,
 }: { 
   event: ActivityEvent; 
   onAgentClick: (id: string) => void;
   onAgentHover: (id: string) => void;
   onAgentHoverEnd: () => void;
+  onConversationClick: (matchId: string) => void;
 }) {
   const getEventIcon = () => {
     switch (event.type) {
@@ -1049,11 +1053,23 @@ function ActivityEventCard({
     </button>
   );
 
+  const hasConversation = event.match_id && (event.type === "message" || event.type === "match" || event.type === "breakup");
+
+  const handleCardClick = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest("button")) return;
+    if (hasConversation && event.match_id) {
+      onConversationClick(event.match_id);
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, x: -20 }}
       animate={{ opacity: 1, x: 0 }}
-      className={`p-3 rounded-lg bg-card/40 border ${getEventColor()}`}
+      onClick={handleCardClick}
+      className={`p-3 rounded-lg bg-card/40 border ${getEventColor()} ${
+        hasConversation ? "cursor-pointer hover:bg-card/60 transition-colors" : ""
+      }`}
     >
       <div className="flex items-center gap-3">
         <div className="w-8 h-8 rounded-full bg-card flex items-center justify-center text-sm font-mono flex-shrink-0">
@@ -1092,8 +1108,13 @@ function ActivityEventCard({
             )}
           </p>
         </div>
-        <span className="text-xs text-muted-foreground whitespace-nowrap">
+        <span className="text-xs text-muted-foreground whitespace-nowrap flex items-center gap-1">
           {formatTime(event.timestamp)}
+          {hasConversation && (
+            <svg className="w-3 h-3 text-muted-foreground/50" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          )}
         </span>
       </div>
       {event.type === "message" && event.details && (

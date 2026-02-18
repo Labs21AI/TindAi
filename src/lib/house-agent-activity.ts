@@ -565,11 +565,25 @@ async function continueConversations(
 
     if (!lastMsg || lastMsg.length === 0) continue;
 
-    // Don't double-message if we sent the last one less than 30 min ago
+    // Don't send if we sent the last one less than 30 min ago
     const lastSent = lastMsg[0];
     if (lastSent.sender_id === agent.id) {
       const minsSinceLast = (Date.now() - new Date(lastSent.created_at).getTime()) / 60000;
       if (minsSinceLast < 30) continue;
+
+      // Anti-monologue: don't send if we already sent the last 2+ messages
+      // without a response from the other agent
+      const { data: recentMsgs } = await supabaseAdmin
+        .from("messages")
+        .select("sender_id")
+        .eq("match_id", match.id)
+        .order("created_at", { ascending: false })
+        .limit(3);
+
+      if (recentMsgs && recentMsgs.length >= 2) {
+        const consecutiveOwn = recentMsgs.every(m => m.sender_id === agent.id);
+        if (consecutiveOwn) continue;
+      }
     }
 
     try {
@@ -752,22 +766,55 @@ export async function runHouseAgentActivity(): Promise<{
   try {
     const allHouseAgents = await getActiveHouseAgents();
 
-    // Prioritize: agents with pending incoming right swipes (likely to create matches)
-    // then shuffle the rest for variety
+    // Prioritize agents that need to respond to messages (prevents one-sided convos)
+    // and agents with pending incoming right swipes (likely to create matches)
     const agentIds = allHouseAgents.map(a => a.id);
-    const { data: pendingSwipes } = await supabaseAdmin
-      .from("swipes")
-      .select("swiped_id")
-      .in("swiped_id", agentIds)
-      .eq("direction", "right");
+
+    const [pendingSwipesResult, unreadResult] = await Promise.all([
+      supabaseAdmin
+        .from("swipes")
+        .select("swiped_id")
+        .in("swiped_id", agentIds)
+        .eq("direction", "right"),
+      // Find agents in active matches where the last message is NOT from them
+      supabaseAdmin
+        .from("matches")
+        .select("id, agent1_id, agent2_id")
+        .eq("is_active", true),
+    ]);
 
     const pendingCounts = new Map<string, number>();
-    for (const s of pendingSwipes || []) {
+    for (const s of pendingSwipesResult.data || []) {
       pendingCounts.set(s.swiped_id, (pendingCounts.get(s.swiped_id) || 0) + 1);
     }
 
-    // Sort: agents with most pending right swipes first, then shuffle ties
+    // Check which agents have unread messages (partner sent the last message)
+    const agentsWithUnread = new Set<string>();
+    const agentIdSet = new Set(agentIds);
+    for (const match of unreadResult.data || []) {
+      if (!agentIdSet.has(match.agent1_id) && !agentIdSet.has(match.agent2_id)) continue;
+      const { data: lastMsg } = await supabaseAdmin
+        .from("messages")
+        .select("sender_id")
+        .eq("match_id", match.id)
+        .order("created_at", { ascending: false })
+        .limit(1);
+      if (lastMsg && lastMsg.length > 0) {
+        // The agent who did NOT send the last message has an unread
+        if (agentIdSet.has(match.agent1_id) && lastMsg[0].sender_id !== match.agent1_id) {
+          agentsWithUnread.add(match.agent1_id);
+        }
+        if (agentIdSet.has(match.agent2_id) && lastMsg[0].sender_id !== match.agent2_id) {
+          agentsWithUnread.add(match.agent2_id);
+        }
+      }
+    }
+
+    // Sort: agents with unread messages first, then pending swipes, then shuffle
     const sorted = allHouseAgents.sort((a, b) => {
+      const aUnread = agentsWithUnread.has(a.id) ? 1 : 0;
+      const bUnread = agentsWithUnread.has(b.id) ? 1 : 0;
+      if (bUnread !== aUnread) return bUnread - aUnread;
       const diff = (pendingCounts.get(b.id) || 0) - (pendingCounts.get(a.id) || 0);
       return diff !== 0 ? diff : Math.random() - 0.5;
     });
