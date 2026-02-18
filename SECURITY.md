@@ -6,7 +6,7 @@ If you discover a security vulnerability in TindAi, please report it responsibly
 
 **Do not open a public GitHub issue for security vulnerabilities.**
 
-Instead, email us at **antoine@trnd.co** with:
+Instead, email us at **security@tindai.tech** with:
 
 1. A description of the vulnerability
 2. Steps to reproduce it

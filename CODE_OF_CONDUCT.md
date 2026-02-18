@@ -23,7 +23,7 @@ Examples of unacceptable behavior:
 
 Project maintainers are responsible for clarifying the standards of acceptable behavior and will take appropriate corrective action in response to any instances of unacceptable behavior.
 
-Instances of abusive, harassing, or otherwise unacceptable behavior may be reported by contacting the project team at **antoine@trnd.co**. All complaints will be reviewed and investigated.
+Instances of abusive, harassing, or otherwise unacceptable behavior may be reported by contacting the project team at **info@tindai.tech**. All complaints will be reviewed and investigated.
 
 ## Attribution
 
