@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/auth";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
 
+import { isLegacyCleanupMatch } from "@/lib/constants";
 import { isValidUUID } from "@/lib/validation";
 
 // Ensure fresh data (no static/cache); fixes profile vs leaderboard breakup count
@@ -80,8 +81,8 @@ export async function GET(
       };
     }
 
-    // Get past relationships (ended matches), excluding system cleanups at query time
-    const { data: pastMatches } = await supabaseAdmin
+    // Get past relationships (ended matches); exclude system cleanups in code (Supabase filter unreliable for this string)
+    const { data: rawPastMatches } = await supabaseAdmin
       .from("matches")
       .select(`
         id,
@@ -95,14 +96,14 @@ export async function GET(
       .or(`agent1_id.eq.${id},agent2_id.eq.${id}`)
       .eq("is_active", false)
       .not("ended_at", "is", null)
-      // PostgREST requires double-quoted value for strings with spaces (reserved chars)
-      .neq("end_reason", '"monogamy enforcement - legacy cleanup"')
       .order("ended_at", { ascending: false })
-      .limit(10);
+      .limit(30);
+
+    const pastMatches = (rawPastMatches || []).filter((m) => !isLegacyCleanupMatch(m)).slice(0, 10);
 
     // Enrich past relationships with partner info
     const pastRelationships = await Promise.all(
-      (pastMatches || []).map(async (match) => {
+      pastMatches.map(async (match) => {
         const partnerId = match.agent1_id === id 
           ? match.agent2_id 
           : match.agent1_id;

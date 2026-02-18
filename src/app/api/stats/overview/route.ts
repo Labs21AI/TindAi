@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/auth";
+import { isLegacyCleanupMatch } from "@/lib/constants";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
 
 export async function GET(request: NextRequest) {
@@ -15,11 +16,11 @@ export async function GET(request: NextRequest) {
     const [
       totalAgentsRes,
       activeMatchesRes,
-      endedMatchesRes,
+      endedMatchesRowsRes,
       matchedAgentsRes,
       everMatchedRes,
       recentMatchesRes,
-      recentBreakupsRes,
+      recentBreakupsRowsRes,
       recentSwipersRes,
       recentMessagersRes,
       recentJoinedRes,
@@ -29,11 +30,11 @@ export async function GET(request: NextRequest) {
     ] = await Promise.all([
       supabaseAdmin.from("agents").select("id", { count: "exact", head: true }),
       supabaseAdmin.from("matches").select("id", { count: "exact", head: true }).eq("is_active", true),
-      supabaseAdmin.from("matches").select("id", { count: "exact", head: true }).eq("is_active", false).neq("end_reason", '"monogamy enforcement - legacy cleanup"'),
+      supabaseAdmin.from("matches").select("id, end_reason, ended_at").eq("is_active", false).not("ended_at", "is", null).limit(5000),
       supabaseAdmin.from("matches").select("agent1_id, agent2_id").eq("is_active", true),
       supabaseAdmin.from("matches").select("agent1_id, agent2_id"),
       supabaseAdmin.from("matches").select("id", { count: "exact", head: true }).gte("matched_at", oneWeekAgo),
-      supabaseAdmin.from("matches").select("id", { count: "exact", head: true }).eq("is_active", false).neq("end_reason", '"monogamy enforcement - legacy cleanup"').gte("ended_at", oneWeekAgo),
+      supabaseAdmin.from("matches").select("id, end_reason, ended_at").eq("is_active", false).not("ended_at", "is", null).gte("ended_at", oneWeekAgo).limit(5000),
       supabaseAdmin.from("swipes").select("swiper_id").gte("created_at", oneWeekAgo),
       supabaseAdmin.from("messages").select("sender_id").gte("created_at", oneWeekAgo),
       supabaseAdmin.from("agents").select("id", { count: "exact", head: true }).gte("created_at", oneWeekAgo),
@@ -41,6 +42,9 @@ export async function GET(request: NextRequest) {
       supabaseAdmin.from("messages").select("id", { count: "exact", head: true }),
       supabaseAdmin.from("swipes").select("id", { count: "exact", head: true }).eq("direction", "right"),
     ]);
+
+    const endedMatches = (endedMatchesRowsRes.data || []).filter((m) => !isLegacyCleanupMatch(m)).length;
+    const breakupsThisWeek = (recentBreakupsRowsRes.data || []).filter((m) => !isLegacyCleanupMatch(m)).length;
 
     const totalAgents = totalAgentsRes.count || 0;
 
@@ -74,9 +78,9 @@ export async function GET(request: NextRequest) {
       ],
       summary: {
         activeMatches: activeMatchesRes.count || 0,
-        endedMatches: endedMatchesRes.count || 0,
+        endedMatches,
         newMatchesThisWeek: recentMatchesRes.count || 0,
-        breakupsThisWeek: recentBreakupsRes.count || 0,
+        breakupsThisWeek,
         totalSwipes,
         totalMessages: totalMessagesRes.count || 0,
       },

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/auth";
+import { isLegacyCleanupMatch } from "@/lib/constants";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
 
 export interface ActivityEvent {
@@ -98,7 +99,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // --- Breakups (exclude system cleanups) ---
+    // --- Breakups (exclude system cleanups in code) ---
     let breakupQuery = supabaseAdmin
       .from("matches")
       .select(`
@@ -107,17 +108,17 @@ export async function GET(request: NextRequest) {
         agent2:agent2_id (id, name)
       `)
       .not("ended_at", "is", null)
-      .neq("end_reason", '"monogamy enforcement - legacy cleanup"')
       .order("ended_at", { ascending: false })
-      .limit(limit);
+      .limit(limit + 50);
 
     if (dateFilter) {
       breakupQuery = breakupQuery.lt("ended_at", dateFilter);
     }
 
-    const { data: breakups } = await breakupQuery;
+    const { data: rawBreakups } = await breakupQuery;
+    const breakups = (rawBreakups || []).filter((b) => !isLegacyCleanupMatch(b)).slice(0, limit);
 
-    for (const breakup of breakups || []) {
+    for (const breakup of breakups) {
       const agent1 = breakup.agent1 as unknown as { id: string; name: string } | null;
       const agent2 = breakup.agent2 as unknown as { id: string; name: string } | null;
       if (agent1 && agent2 && breakup.ended_at) {
