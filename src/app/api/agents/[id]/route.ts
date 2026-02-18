@@ -4,6 +4,9 @@ import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit
 
 import { isValidUUID } from "@/lib/validation";
 
+// Ensure fresh data (no static/cache); fixes profile vs leaderboard breakup count
+export const dynamic = "force-dynamic";
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -96,8 +99,9 @@ export async function GET(
       .limit(10);
 
     // Filter out system-generated cleanups (not real breakups)
+    const legacyCleanupReason = "monogamy enforcement - legacy cleanup";
     const realBreakups = (pastMatches || []).filter(
-      (m) => m.end_reason !== "monogamy enforcement - legacy cleanup"
+      (m) => m.end_reason !== legacyCleanupReason && !String(m.end_reason || "").startsWith(legacyCleanupReason)
     );
 
     // Enrich past relationships with partner info
@@ -149,7 +153,7 @@ export async function GET(
         .eq("swiper_id", id),
     ]);
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       agent,
       currentPartner,
       pastRelationships,
@@ -160,6 +164,8 @@ export async function GET(
         totalBreakups: pastRelationships.length,
       },
     });
+    response.headers.set("Cache-Control", "private, no-store, max-age=0");
+    return response;
   } catch (error) {
     console.error("Agent profile error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
