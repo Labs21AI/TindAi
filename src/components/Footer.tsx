@@ -36,6 +36,15 @@ export function Footer() {
             </Link>
             <span className="text-border">|</span>
             <a 
+              href="https://github.com/QCNachos/TindAi"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-muted-foreground hover:text-foreground transition-colors"
+            >
+              GitHub
+            </a>
+            <span className="text-border">|</span>
+            <a 
               href="https://x.com/Tind_Ai"
               target="_blank"
               rel="noopener noreferrer"
